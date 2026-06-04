@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   Plus,
   Pencil,
@@ -20,13 +20,21 @@ import {
   LogOut,
   UserPlus,
   Save,
-  MessageSquare
+  MessageSquare,
 } from "lucide-react";
-import { useStore, type StoredMatch, type PlayerStats, type MatchResult } from "@/store/match-store";
+import {
+  useStore,
+  type AdminRole,
+  type StoredMatch,
+  type PlayerStats,
+  type MatchResult,
+} from "@/store/match-store";
+import { usePicadoPlayer } from "@/hooks/use-picado-player";
 import { useMatchRealtime } from "@/hooks/use-match-realtime";
 import { PlayerAvatar } from "@/components/Avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { Player } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/_app/organizador")({
   component: OrganizadorRoute,
@@ -64,7 +72,7 @@ type VoteRow = {
   locked: boolean;
 };
 
-function buildVotingSummary(match: StoredMatch | undefined, playerMap: Record<string, any>) {
+function buildVotingSummary(match: StoredMatch | undefined, playerMap: Record<string, Player>) {
   const result = getMatchResult(match);
   const votes = result.votes ?? [];
   const voterIds = Array.from(new Set(votes.map((v) => v.voter_id).filter(Boolean)));
@@ -119,15 +127,55 @@ function buildVotingSummary(match: StoredMatch | undefined, playerMap: Record<st
 }
 
 function OrganizadorRoute() {
-  const { isAdmin, adminRole, loginAdmin } = useStore();
+  const {
+    isAdmin,
+    adminRole,
+    adminSource,
+    adminPlayerId,
+    loginAdmin,
+    loginAdminByPlayer,
+    logoutAdmin,
+  } = useStore();
+  const { stored } = usePicadoPlayer();
   const [pin, setPin] = useState("");
+
+  useEffect(() => {
+    if (stored?.admin_role) {
+      if (
+        !isAdmin ||
+        adminRole !== stored.admin_role ||
+        adminSource !== "dni" ||
+        adminPlayerId !== stored.player_id
+      ) {
+        loginAdminByPlayer(stored.admin_role, stored.player_id);
+      }
+      return;
+    }
+
+    if (adminSource === "dni" && isAdmin) {
+      logoutAdmin();
+    }
+  }, [
+    adminPlayerId,
+    adminRole,
+    adminSource,
+    isAdmin,
+    loginAdminByPlayer,
+    logoutAdmin,
+    stored?.admin_role,
+    stored?.player_id,
+  ]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     const success = loginAdmin(pin);
     if (success) {
       const role = useStore.getState().adminRole;
-      toast.success(role === "general" ? "Sesion de admin general iniciada." : "Sesion de armado de equipos iniciada.");
+      toast.success(
+        role === "general"
+          ? "Sesion de admin general iniciada."
+          : "Sesion de armado de equipos iniciada.",
+      );
       setPin("");
     } else {
       toast.error("PIN incorrecto. Intentá de nuevo.");
@@ -139,15 +187,19 @@ function OrganizadorRoute() {
       <div className="mx-auto max-w-md px-4 py-16">
         <div className="rounded-3xl border border-border/60 bg-card/60 backdrop-blur-md p-6 shadow-2xl space-y-6 text-center pitch-lines relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-card/90" />
-          
+
           <div className="relative space-y-4">
             <div className="mx-auto size-14 rounded-full bg-lime/10 border border-lime/30 flex items-center justify-center text-lime shadow-glow">
               <Lock className="size-6" />
             </div>
-            
+
             <div className="space-y-1">
               <h1 className="font-display text-3xl uppercase tracking-wider">Consola Admin</h1>
-              <p className="text-sm text-muted-foreground">Ingresá tu PIN para desbloquear las herramientas permitidas.</p>
+              <p className="text-sm text-muted-foreground">
+                {stored
+                  ? "Tu DNI no tiene permisos admin. El principal puede entrar con PIN."
+                  : "Ingresá tu PIN para desbloquear las herramientas permitidas."}
+              </p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4 pt-2">
@@ -166,7 +218,6 @@ function OrganizadorRoute() {
                 Ingresar
               </button>
             </form>
-
           </div>
         </div>
       </div>
@@ -207,7 +258,9 @@ function OrganizadorPanel() {
 
   const isGeneralAdmin = adminRole === "general";
   const canManageTeams = adminRole === "general" || adminRole === "equipos";
-  const availableTabs: TabKey[] = isGeneralAdmin ? ["partidos", "jugadores", "reglas"] : ["partidos"];
+  const availableTabs: TabKey[] = isGeneralAdmin
+    ? ["partidos", "jugadores", "reglas"]
+    : ["partidos"];
 
   const [activeTab, setActiveTab] = useState<TabKey>("partidos");
 
@@ -250,6 +303,7 @@ function OrganizadorPanel() {
   const [newPlayerPos, setNewPlayerPos] = useState("MED");
   const [newPlayerRating, setNewPlayerRating] = useState(1200);
   const [newPlayerDni, setNewPlayerDni] = useState("");
+  const [newPlayerAdminRole, setNewPlayerAdminRole] = useState<AdminRole | "none">("none");
 
   // Edición inline de jugadores
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
@@ -258,6 +312,7 @@ function OrganizadorPanel() {
   const [editPlayerPos, setEditPlayerPos] = useState("");
   const [editPlayerRating, setEditPlayerRating] = useState(1200);
   const [editPlayerDni, setEditPlayerDni] = useState("");
+  const [editPlayerAdminRole, setEditPlayerAdminRole] = useState<AdminRole | "none">("none");
 
   // Búsqueda de jugadores
   const [playerSearch, setPlayerSearch] = useState("");
@@ -274,7 +329,7 @@ function OrganizadorPanel() {
     if (!activeMatch) return [];
     const registeredIds = new Set([
       ...(activeMatch.confirmed ?? []),
-      ...(activeMatch.waitlist ?? [])
+      ...(activeMatch.waitlist ?? []),
     ]);
     return players.filter((p) => !registeredIds.has(p.id));
   }, [players, activeMatch]);
@@ -380,7 +435,13 @@ function OrganizadorPanel() {
       toast.error("Completá todos los campos.");
       return;
     }
-    const promise = createMatch(newMatchFecha, newMatchHora, newMatchSede, newMatchFormato, newMatchCupoMax);
+    const promise = createMatch(
+      newMatchFecha,
+      newMatchHora,
+      newMatchSede,
+      newMatchFormato,
+      newMatchCupoMax,
+    );
     toast.promise(promise, {
       loading: "Creando partido en Supabase...",
       success: "¡Partido creado con éxito!",
@@ -395,7 +456,11 @@ function OrganizadorPanel() {
   const handleDeleteMatch = async () => {
     if (!isGeneralAdmin) return;
     if (!activeMatch) return;
-    if (confirm(`¿Estás seguro que querés eliminar permanentemente el partido de ${activeMatch.venue}?`)) {
+    if (
+      confirm(
+        `¿Estás seguro que querés eliminar permanentemente el partido de ${activeMatch.venue}?`,
+      )
+    ) {
       const promise = deleteMatch(activeMatch.id);
       toast.promise(promise, {
         loading: "Eliminando partido de Supabase...",
@@ -568,7 +633,8 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
     }
     const pos = modalMode === "create" ? newPlayerPos : editPlayerPos;
     const rating = modalMode === "create" ? newPlayerRating : editPlayerRating;
-    const promise = addPlayer(name.trim(), nickname.trim(), pos, rating, null, dni);
+    const adminRole = newPlayerAdminRole === "none" ? null : newPlayerAdminRole;
+    const promise = addPlayer(name.trim(), nickname.trim(), pos, rating, null, dni, adminRole);
     toast.promise(promise, {
       loading: "Agregando jugador al plantel...",
       success: "Jugador agregado al plantel con éxito.",
@@ -578,6 +644,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
     setNewPlayerName("");
     setNewPlayerNickname("");
     setNewPlayerDni("");
+    setNewPlayerAdminRole("none");
     return true;
   };
 
@@ -603,8 +670,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
     const promise = updatePlayer(id, {
       name: editPlayerName.trim(),
       nickname: editPlayerNickname.trim(),
-      position: editPlayerPos as any,
+      position: editPlayerPos as Player["position"],
       rating: editPlayerRating,
+      adminRole: editPlayerAdminRole === "none" ? null : editPlayerAdminRole,
       ...(dni ? { dni } : {}),
     });
     toast.promise(promise, {
@@ -616,7 +684,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
   };
 
   // Abrir modal de edición de jugador
-  const startEditPlayer = (p: typeof players[number]) => {
+  const startEditPlayer = (p: (typeof players)[number]) => {
     if (!isGeneralAdmin) return;
     setModalMode("edit");
     setModalPlayerId(p.id);
@@ -626,6 +694,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
     setEditPlayerPos(p.position);
     setEditPlayerRating(p.rating);
     setEditPlayerDni("");
+    setEditPlayerAdminRole(p.adminRole ?? "none");
     setShowPlayerModal(true);
   };
 
@@ -640,6 +709,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
     setNewPlayerDni("");
     setNewPlayerPos("MED");
     setNewPlayerRating(1200);
+    setNewPlayerAdminRole("none");
     setShowPlayerModal(true);
   };
 
@@ -653,7 +723,11 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
   const handleDeletePlayer = async (id: string) => {
     if (!isGeneralAdmin) return;
     const p = playerMap[id];
-    if (confirm(`¿Estás seguro que querés eliminar/desactivar a ${p?.nickname || "este jugador"} del plantel?`)) {
+    if (
+      confirm(
+        `¿Estás seguro que querés eliminar/desactivar a ${p?.nickname || "este jugador"} del plantel?`,
+      )
+    ) {
       const promise = deletePlayer(id);
       toast.promise(promise, {
         loading: "Eliminando jugador del plantel...",
@@ -665,13 +739,14 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
 
   return (
     <div className="mx-auto max-w-5xl px-4 md:px-6 py-6 space-y-6">
-      
       {/* Header Panel */}
       <header className="flex items-center justify-between flex-wrap gap-4 border-b border-border/40 pb-4">
         <div>
           <h1 className="font-display text-4xl md:text-5xl uppercase">Consola de Control</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {isGeneralAdmin ? "Gestioná partidos, modificá el plantel y configurá reglas." : "Vista de partidos y armado de equipos."}
+            {isGeneralAdmin
+              ? "Gestioná partidos, modificá el plantel y configurá reglas."
+              : "Vista de partidos y armado de equipos."}
           </p>
           <span className="mt-2 inline-flex rounded-full border border-lime/30 bg-lime/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-lime">
             {isGeneralAdmin ? "Admin general" : "Admin equipos"}
@@ -698,7 +773,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
               "flex-1 text-center py-2.5 text-xs font-semibold uppercase tracking-wider rounded-lg transition",
               activeTab === t
                 ? "bg-lime text-lime-foreground shadow-glow"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/40",
             )}
           >
             {t === "partidos" ? "Partidos" : t === "jugadores" ? "Plantel" : "Reglas de Ranking"}
@@ -709,11 +784,12 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
       {/* CONTENIDO TAB 1: PARTIDOS */}
       {activeTab === "partidos" && (
         <div className="grid md:grid-cols-[280px_1fr] gap-6 animate-fade-in">
-          
           {/* Lado izquierdo: Selector de partidos */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Selector de Partido</h2>
+              <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                Selector de Partido
+              </h2>
               {isGeneralAdmin && (
                 <button
                   onClick={() => setShowCreateMatch(true)}
@@ -733,7 +809,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                     onClick={() => setSelectedMatchId(m.id)}
                     className={cn(
                       "w-full text-left flex items-center gap-3 p-4 transition-all hover:bg-secondary/40",
-                      isSelected ? "bg-secondary/70 border-l-4 border-lime" : ""
+                      isSelected ? "bg-secondary/70 border-l-4 border-lime" : "",
                     )}
                   >
                     <div className="text-center w-10 shrink-0">
@@ -771,8 +847,13 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
               <div className="rounded-3xl border border-border/60 bg-card/40 backdrop-blur p-12 text-center text-muted-foreground flex flex-col items-center justify-center space-y-4">
                 <CalendarDays className="size-12 text-muted-foreground/40 animate-pulse" />
                 <div className="space-y-1">
-                  <h3 className="font-display text-xl uppercase text-foreground">No hay partidos creados</h3>
-                  <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">Registrá el primer partido de la temporada para empezar a armar los equipos y calcular el ranking.</p>
+                  <h3 className="font-display text-xl uppercase text-foreground">
+                    No hay partidos creados
+                  </h3>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
+                    Registrá el primer partido de la temporada para empezar a armar los equipos y
+                    calcular el ranking.
+                  </p>
                 </div>
                 {isGeneralAdmin && (
                   <button
@@ -785,27 +866,35 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
               </div>
             ) : (
               <div className="rounded-3xl border border-border/60 bg-card/40 backdrop-blur p-5 md:p-6 space-y-6">
-                
                 {/* Header del Partido Activo */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-4">
                   <div>
-                    <span className={cn(
-                      "inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full mb-1",
-                      activeMatch.status === "closed" ? "bg-muted text-muted-foreground" : "bg-lime/15 text-lime"
-                    )}>
-                      {activeMatch.status === "closed" ? "Partido Finalizado" : "Inscripción / Planilla Abierta"}
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full mb-1",
+                        activeMatch.status === "closed"
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-lime/15 text-lime",
+                      )}
+                    >
+                      {activeMatch.status === "closed"
+                        ? "Partido Finalizado"
+                        : "Inscripción / Planilla Abierta"}
                     </span>
                     <h2 className="font-display text-2xl md:text-3xl uppercase leading-none mt-1">
                       {activeMatch.venue}
                     </h2>
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
                       <Calendar className="size-3.5" />
-                      {getFormatDate(activeMatch.date)} a las {(activeMatch.hora ?? "").slice(0,5)} hs
+                      {getFormatDate(activeMatch.date)} a las {(activeMatch.hora ?? "").slice(0, 5)}{" "}
+                      hs
                     </p>
                   </div>
 
                   {/* Botones de Finalización */}
-                  <div className={cn("shrink-0 flex items-center gap-2", !isGeneralAdmin && "hidden")}>
+                  <div
+                    className={cn("shrink-0 flex items-center gap-2", !isGeneralAdmin && "hidden")}
+                  >
                     <button
                       onClick={handleDeleteMatch}
                       className="inline-flex items-center justify-center p-2 rounded-xl border border-out/30 bg-card hover:bg-out/10 text-out transition"
@@ -874,7 +963,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                         </h3>
                         <p className="text-xs text-muted-foreground">
                           {votingSummary.voted}/{votingSummary.total} jugadores votaron
-                          {votingSummary.remainingVotes > 0 ? ` · faltan ${votingSummary.remainingVotes}` : " · votacion completa"}
+                          {votingSummary.remainingVotes > 0
+                            ? ` · faltan ${votingSummary.remainingVotes}`
+                            : " · votacion completa"}
                         </p>
                       </div>
                       <button
@@ -883,33 +974,50 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                         className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold/90 px-4 py-2 text-xs font-bold text-black hover:bg-gold transition disabled:opacity-40"
                       >
                         <Trophy className="size-3.5" />
-                        {votingSummary.mvpRows[0]?.locked ? "Cerrar: MVP definido" : "Cerrar votacion"}
+                        {votingSummary.mvpRows[0]?.locked
+                          ? "Cerrar: MVP definido"
+                          : "Cerrar votacion"}
                       </button>
                     </div>
 
                     <div className="h-2 rounded-full bg-secondary overflow-hidden">
                       <div
                         className="h-full bg-gold transition-all"
-                        style={{ width: `${votingSummary.total ? (votingSummary.voted / votingSummary.total) * 100 : 0}%` }}
+                        style={{
+                          width: `${votingSummary.total ? (votingSummary.voted / votingSummary.total) * 100 : 0}%`,
+                        }}
                       />
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-3">
                       <div className="rounded-xl border border-border/50 bg-card/60 p-3 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-gold">MVP</span>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-gold">
+                            MVP
+                          </span>
                           {!votingSummary.hasWinnerTeam && (
-                            <span className="text-[10px] text-muted-foreground">Sin equipo ganador</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              Sin equipo ganador
+                            </span>
                           )}
                         </div>
                         {votingSummary.mvpRows.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">Todavia no hay votos validos para MVP.</p>
+                          <p className="text-xs text-muted-foreground">
+                            Todavia no hay votos validos para MVP.
+                          </p>
                         ) : (
                           votingSummary.mvpRows.slice(0, 3).map((row) => (
-                            <div key={row.playerId} className="flex items-center justify-between gap-3 text-sm">
+                            <div
+                              key={row.playerId}
+                              className="flex items-center justify-between gap-3 text-sm"
+                            >
                               <span className="truncate">{row.name}</span>
                               <span className="inline-flex items-center gap-2 text-xs font-semibold">
-                                {row.locked && <span className="rounded-full bg-lime/15 px-2 py-0.5 text-[10px] text-lime">claro ganador</span>}
+                                {row.locked && (
+                                  <span className="rounded-full bg-lime/15 px-2 py-0.5 text-[10px] text-lime">
+                                    claro ganador
+                                  </span>
+                                )}
                                 {row.votes} voto{row.votes !== 1 ? "s" : ""}
                               </span>
                             </div>
@@ -918,15 +1026,26 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                       </div>
 
                       <div className="rounded-xl border border-border/50 bg-card/60 p-3 space-y-2">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-lime">Gol de la Fecha</span>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-lime">
+                          Gol de la Fecha
+                        </span>
                         {votingSummary.golRows.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">Todavia no hay votos para gol de la fecha.</p>
+                          <p className="text-xs text-muted-foreground">
+                            Todavia no hay votos para gol de la fecha.
+                          </p>
                         ) : (
                           votingSummary.golRows.slice(0, 3).map((row) => (
-                            <div key={row.playerId} className="flex items-center justify-between gap-3 text-sm">
+                            <div
+                              key={row.playerId}
+                              className="flex items-center justify-between gap-3 text-sm"
+                            >
                               <span className="truncate">{row.name}</span>
                               <span className="inline-flex items-center gap-2 text-xs font-semibold">
-                                {row.locked && <span className="rounded-full bg-lime/15 px-2 py-0.5 text-[10px] text-lime">claro ganador</span>}
+                                {row.locked && (
+                                  <span className="rounded-full bg-lime/15 px-2 py-0.5 text-[10px] text-lime">
+                                    claro ganador
+                                  </span>
+                                )}
                                 {row.votes} voto{row.votes !== 1 ? "s" : ""}
                               </span>
                             </div>
@@ -942,7 +1061,10 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {votingSummary.missing.map((player) => (
-                            <span key={player.id} className="rounded-full bg-card px-2 py-1 text-[11px] text-muted-foreground">
+                            <span
+                              key={player.id}
+                              className="rounded-full bg-card px-2 py-1 text-[11px] text-muted-foreground"
+                            >
                               {player.name}
                             </span>
                           ))}
@@ -956,7 +1078,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <h3 className="font-display text-lg uppercase">Armar Equipos</h3>
-                      <p className="text-xs text-muted-foreground">Arrastrá a los titulares para armar los dos equipos.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Arrastrá a los titulares para armar los dos equipos.
+                      </p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {canManageTeams && !activeMatch.played && (
@@ -979,28 +1103,40 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
-                    
                     {/* Equipo A */}
                     <div
-                      onDragOver={(e) => { if (canManageTeams && !activeMatch.played) e.preventDefault(); }}
-                      onDragEnter={() => { if (canManageTeams && !activeMatch.played) setIsDragOverA(true); }}
+                      onDragOver={(e) => {
+                        if (canManageTeams && !activeMatch.played) e.preventDefault();
+                      }}
+                      onDragEnter={() => {
+                        if (canManageTeams && !activeMatch.played) setIsDragOverA(true);
+                      }}
                       onDragLeave={() => setIsDragOverA(false)}
-                      onDrop={(e) => { setIsDragOverA(false); handleDrop(e, "A"); }}
+                      onDrop={(e) => {
+                        setIsDragOverA(false);
+                        handleDrop(e, "A");
+                      }}
                       className={cn(
                         "rounded-2xl border bg-card p-4 transition-all duration-200 min-h-[300px]",
-                        isDragOverA ? "border-lime shadow-glow bg-lime/5 scale-[1.01]" : "border-border/60",
-                        activeMatch.played ? "opacity-90" : ""
+                        isDragOverA
+                          ? "border-lime shadow-glow bg-lime/5 scale-[1.01]"
+                          : "border-border/60",
+                        activeMatch.played ? "opacity-90" : "",
                       )}
                     >
                       <div className="flex items-center justify-between mb-3 border-b border-border/40 pb-2">
                         <div className="flex items-center gap-2">
                           <span className="size-3 rounded-full bg-lime" />
                           <span className="font-display text-lg uppercase">Equipo A</span>
-                          <span className="text-xs text-muted-foreground">({teamAPlayers.length})</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({teamAPlayers.length})
+                          </span>
                         </div>
                         <div className="text-right">
                           <div className="font-display text-xl leading-none text-lime">{avgA}</div>
-                          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">prom.</div>
+                          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">
+                            prom.
+                          </div>
                         </div>
                       </div>
 
@@ -1017,15 +1153,21 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                               onDragStart={(e) => handleDragStart(e, p.id)}
                               className={cn(
                                 "flex items-center gap-3 rounded-xl bg-secondary/50 px-2.5 py-2",
-                                activeMatch.played || !canManageTeams ? "" : "cursor-grab active:cursor-grabbing hover:bg-secondary transition"
+                                activeMatch.played || !canManageTeams
+                                  ? ""
+                                  : "cursor-grab active:cursor-grabbing hover:bg-secondary transition",
                               )}
                             >
                               <PlayerAvatar player={p} size="sm" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs font-semibold truncate">{p.nickname}</div>
-                                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{p.position}</div>
+                                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                  {p.position}
+                                </div>
                               </div>
-                              <span className="font-display text-sm tabular-nums text-muted-foreground">{p.rating}</span>
+                              <span className="font-display text-sm tabular-nums text-muted-foreground">
+                                {p.rating}
+                              </span>
                               {isGeneralAdmin && !activeMatch.played && (
                                 <button
                                   onClick={() => handleRemoveSignupManual(p.id)}
@@ -1043,25 +1185,38 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
 
                     {/* Equipo B */}
                     <div
-                      onDragOver={(e) => { if (canManageTeams && !activeMatch.played) e.preventDefault(); }}
-                      onDragEnter={() => { if (canManageTeams && !activeMatch.played) setIsDragOverB(true); }}
+                      onDragOver={(e) => {
+                        if (canManageTeams && !activeMatch.played) e.preventDefault();
+                      }}
+                      onDragEnter={() => {
+                        if (canManageTeams && !activeMatch.played) setIsDragOverB(true);
+                      }}
                       onDragLeave={() => setIsDragOverB(false)}
-                      onDrop={(e) => { setIsDragOverB(false); handleDrop(e, "B"); }}
+                      onDrop={(e) => {
+                        setIsDragOverB(false);
+                        handleDrop(e, "B");
+                      }}
                       className={cn(
                         "rounded-2xl border bg-card p-4 transition-all duration-200 min-h-[300px]",
-                        isDragOverB ? "border-gold shadow-glow bg-gold/5 scale-[1.01]" : "border-border/60",
-                        activeMatch.played ? "opacity-90" : ""
+                        isDragOverB
+                          ? "border-gold shadow-glow bg-gold/5 scale-[1.01]"
+                          : "border-border/60",
+                        activeMatch.played ? "opacity-90" : "",
                       )}
                     >
                       <div className="flex items-center justify-between mb-3 border-b border-border/40 pb-2">
                         <div className="flex items-center gap-2">
                           <span className="size-3 rounded-full bg-gold" />
                           <span className="font-display text-lg uppercase">Equipo B</span>
-                          <span className="text-xs text-muted-foreground">({teamBPlayers.length})</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({teamBPlayers.length})
+                          </span>
                         </div>
                         <div className="text-right">
                           <div className="font-display text-xl leading-none text-gold">{avgB}</div>
-                          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">prom.</div>
+                          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">
+                            prom.
+                          </div>
                         </div>
                       </div>
 
@@ -1078,15 +1233,21 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                               onDragStart={(e) => handleDragStart(e, p.id)}
                               className={cn(
                                 "flex items-center gap-3 rounded-xl bg-secondary/50 px-2.5 py-2",
-                                activeMatch.played || !canManageTeams ? "" : "cursor-grab active:cursor-grabbing hover:bg-secondary transition"
+                                activeMatch.played || !canManageTeams
+                                  ? ""
+                                  : "cursor-grab active:cursor-grabbing hover:bg-secondary transition",
                               )}
                             >
                               <PlayerAvatar player={p} size="sm" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs font-semibold truncate">{p.nickname}</div>
-                                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{p.position}</div>
+                                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                  {p.position}
+                                </div>
                               </div>
-                              <span className="font-display text-sm tabular-nums text-muted-foreground">{p.rating}</span>
+                              <span className="font-display text-sm tabular-nums text-muted-foreground">
+                                {p.rating}
+                              </span>
                               {isGeneralAdmin && !activeMatch.played && (
                                 <button
                                   onClick={() => handleRemoveSignupManual(p.id)}
@@ -1101,15 +1262,18 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                         )}
                       </ul>
                     </div>
-
                   </div>
 
                   {/* Inscripción Manual */}
                   {isGeneralAdmin && !activeMatch.played && (
                     <div className="rounded-2xl border border-border/50 bg-secondary/15 p-4 space-y-3 font-sans">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs uppercase font-bold text-muted-foreground">Inscripción Manual (Admin)</h4>
-                        <span className="text-[10px] text-muted-foreground">Anotar sin DNI directo en Supabase</span>
+                        <h4 className="text-xs uppercase font-bold text-muted-foreground">
+                          Inscripción Manual (Admin)
+                        </h4>
+                        <span className="text-[10px] text-muted-foreground">
+                          Anotar sin DNI directo en Supabase
+                        </span>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-3">
                         <select
@@ -1126,7 +1290,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                         </select>
                         <select
                           value={selectedAddState}
-                          onChange={(e) => setSelectedAddState(e.target.value as "titular" | "espera")}
+                          onChange={(e) =>
+                            setSelectedAddState(e.target.value as "titular" | "espera")
+                          }
                           className="w-full sm:w-32 rounded-xl border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:border-lime select"
                         >
                           <option value="titular">Titular</option>
@@ -1147,185 +1313,233 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
 
                 {/* SECCIÓN 2: RESULTADOS Y ESTADÍSTICAS */}
                 {isGeneralAdmin && (
-                <div className="space-y-4 pt-2 border-t border-border/40">
-                  <div>
-                    <h3 className="font-display text-lg uppercase">Resultado y Planilla</h3>
-                    <p className="text-xs text-muted-foreground">Cargá los goles de cada equipo y el desempeño de los pibes.</p>
-                  </div>
-
-                  {/* Score Editor */}
-                  <div className="flex items-center justify-center gap-6 rounded-2xl bg-secondary/30 border border-border/50 py-4 px-6 max-w-md mx-auto">
-                    <div className="text-center space-y-1">
-                      <div className="text-[10px] uppercase font-bold text-lime">Equipo A</div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => !activeMatch.played && setScore(activeMatch.id, Math.max(0, result.scoreA - 1), result.scoreB)}
-                          disabled={activeMatch.played}
-                          className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
-                        >
-                          -
-                        </button>
-                        <span className="font-display text-3xl px-2 tabular-nums">{result.scoreA}</span>
-                        <button
-                          onClick={() => !activeMatch.played && setScore(activeMatch.id, result.scoreA + 1, result.scoreB)}
-                          disabled={activeMatch.played}
-                          className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
-                        >
-                          +
-                        </button>
-                      </div>
+                  <div className="space-y-4 pt-2 border-t border-border/40">
+                    <div>
+                      <h3 className="font-display text-lg uppercase">Resultado y Planilla</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Cargá los goles de cada equipo y el desempeño de los pibes.
+                      </p>
                     </div>
 
-                    <div className="font-display text-2xl text-muted-foreground/60">vs</div>
-
-                    <div className="text-center space-y-1">
-                      <div className="text-[10px] uppercase font-bold text-gold">Equipo B</div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => !activeMatch.played && setScore(activeMatch.id, result.scoreA, Math.max(0, result.scoreB - 1))}
-                          disabled={activeMatch.played}
-                          className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
-                        >
-                          -
-                        </button>
-                        <span className="font-display text-3xl px-2 tabular-nums">{result.scoreB}</span>
-                        <button
-                          onClick={() => !activeMatch.played && setScore(activeMatch.id, result.scoreA, result.scoreB + 1)}
-                          disabled={activeMatch.played}
-                          className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Stats Table */}
-                  <div className="rounded-2xl border border-border/50 overflow-hidden bg-card/60">
-                    <div className="grid grid-cols-[1fr_repeat(4,3.8rem)] md:grid-cols-[1fr_repeat(4,5rem)] px-4 py-2.5 text-[9px] uppercase tracking-wider text-muted-foreground border-b border-border/50 bg-secondary/40 font-semibold">
-                      <span>Jugador</span>
-                      <span className="text-center">Asistió</span>
-                      <span className="text-center">Goles</span>
-                      <span className="text-center">Asist.</span>
-                      <span className="text-center">MVP</span>
-                    </div>
-
-                    <ul className="divide-y divide-border/40 font-sans">
-                      {(activeMatch.confirmed ?? []).map((pid) => {
-                        const player = playerMap[pid];
-                        if (!player) return null;
-
-                        const playerStats = result.stats[pid] ?? {
-                          attended: true,
-                          goals: 0,
-                          assists: 0,
-                          mvp: false,
-                        };
-                        const isTeamA = result.teamA.includes(pid);
-
-                        const updatePlayerStat = (field: keyof PlayerStats, val: any) => {
-                          if (activeMatch.played) return;
-                          setStat(activeMatch.id, pid, { [field]: val });
-                        };
-
-                        return (
-                          <li
-                            key={pid}
-                            className={cn(
-                              "grid grid-cols-[1fr_repeat(4,3.8rem)] md:grid-cols-[1fr_repeat(4,5rem)] items-center px-4 py-2.5",
-                              playerStats.attended ? "" : "opacity-50 bg-secondary/10"
-                            )}
+                    {/* Score Editor */}
+                    <div className="flex items-center justify-center gap-6 rounded-2xl bg-secondary/30 border border-border/50 py-4 px-6 max-w-md mx-auto">
+                      <div className="text-center space-y-1">
+                        <div className="text-[10px] uppercase font-bold text-lime">Equipo A</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              !activeMatch.played &&
+                              setScore(
+                                activeMatch.id,
+                                Math.max(0, result.scoreA - 1),
+                                result.scoreB,
+                              )
+                            }
+                            disabled={activeMatch.played}
+                            className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <PlayerAvatar player={player} size="sm" />
-                              <div className="min-w-0">
-                                <div className="text-xs font-semibold truncate flex items-center gap-1">
-                                  {player.nickname}
-                                  <span className={cn(
-                                    "size-1.5 rounded-full inline-block shrink-0",
-                                    isTeamA ? "bg-lime" : "bg-gold"
-                                  )} />
+                            -
+                          </button>
+                          <span className="font-display text-3xl px-2 tabular-nums">
+                            {result.scoreA}
+                          </span>
+                          <button
+                            onClick={() =>
+                              !activeMatch.played &&
+                              setScore(activeMatch.id, result.scoreA + 1, result.scoreB)
+                            }
+                            disabled={activeMatch.played}
+                            className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="font-display text-2xl text-muted-foreground/60">vs</div>
+
+                      <div className="text-center space-y-1">
+                        <div className="text-[10px] uppercase font-bold text-gold">Equipo B</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              !activeMatch.played &&
+                              setScore(
+                                activeMatch.id,
+                                result.scoreA,
+                                Math.max(0, result.scoreB - 1),
+                              )
+                            }
+                            disabled={activeMatch.played}
+                            className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
+                          >
+                            -
+                          </button>
+                          <span className="font-display text-3xl px-2 tabular-nums">
+                            {result.scoreB}
+                          </span>
+                          <button
+                            onClick={() =>
+                              !activeMatch.played &&
+                              setScore(activeMatch.id, result.scoreA, result.scoreB + 1)
+                            }
+                            disabled={activeMatch.played}
+                            className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Stats Table */}
+                    <div className="rounded-2xl border border-border/50 overflow-hidden bg-card/60">
+                      <div className="grid grid-cols-[1fr_repeat(4,3.8rem)] md:grid-cols-[1fr_repeat(4,5rem)] px-4 py-2.5 text-[9px] uppercase tracking-wider text-muted-foreground border-b border-border/50 bg-secondary/40 font-semibold">
+                        <span>Jugador</span>
+                        <span className="text-center">Asistió</span>
+                        <span className="text-center">Goles</span>
+                        <span className="text-center">Asist.</span>
+                        <span className="text-center">MVP</span>
+                      </div>
+
+                      <ul className="divide-y divide-border/40 font-sans">
+                        {(activeMatch.confirmed ?? []).map((pid) => {
+                          const player = playerMap[pid];
+                          if (!player) return null;
+
+                          const playerStats = result.stats[pid] ?? {
+                            attended: true,
+                            goals: 0,
+                            assists: 0,
+                            mvp: false,
+                          };
+                          const isTeamA = result.teamA.includes(pid);
+
+                          const updatePlayerStat = (
+                            field: keyof PlayerStats,
+                            val: PlayerStats[keyof PlayerStats],
+                          ) => {
+                            if (activeMatch.played) return;
+                            setStat(activeMatch.id, pid, { [field]: val });
+                          };
+
+                          return (
+                            <li
+                              key={pid}
+                              className={cn(
+                                "grid grid-cols-[1fr_repeat(4,3.8rem)] md:grid-cols-[1fr_repeat(4,5rem)] items-center px-4 py-2.5",
+                                playerStats.attended ? "" : "opacity-50 bg-secondary/10",
+                              )}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <PlayerAvatar player={player} size="sm" />
+                                <div className="min-w-0">
+                                  <div className="text-xs font-semibold truncate flex items-center gap-1">
+                                    {player.nickname}
+                                    <span
+                                      className={cn(
+                                        "size-1.5 rounded-full inline-block shrink-0",
+                                        isTeamA ? "bg-lime" : "bg-gold",
+                                      )}
+                                    />
+                                  </div>
+                                  <span className="text-[9px] text-muted-foreground uppercase">
+                                    {player.position}
+                                  </span>
                                 </div>
-                                <span className="text-[9px] text-muted-foreground uppercase">{player.position}</span>
                               </div>
-                            </div>
 
-                            {/* Checkbox Asistencia */}
-                            <div className="flex justify-center">
-                              <input
-                                type="checkbox"
-                                checked={playerStats.attended}
-                                disabled={activeMatch.played}
-                                onChange={(e) => updatePlayerStat("attended", e.target.checked)}
-                                className="size-4 rounded border-border bg-secondary text-lime focus:ring-lime focus:ring-offset-background cursor-pointer"
-                              />
-                            </div>
+                              {/* Checkbox Asistencia */}
+                              <div className="flex justify-center">
+                                <input
+                                  type="checkbox"
+                                  checked={playerStats.attended}
+                                  disabled={activeMatch.played}
+                                  onChange={(e) => updatePlayerStat("attended", e.target.checked)}
+                                  className="size-4 rounded border-border bg-secondary text-lime focus:ring-lime focus:ring-offset-background cursor-pointer"
+                                />
+                              </div>
 
-                            {/* Contador Goles */}
-                            <div className="flex items-center justify-center gap-1 font-mono text-xs">
-                              <button
-                                onClick={() => updatePlayerStat("goals", Math.max(0, playerStats.goals - 1))}
-                                disabled={activeMatch.played || !playerStats.attended}
-                                className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
-                              >
-                                -
-                              </button>
-                              <span className="w-4 text-center tabular-nums">{playerStats.goals}</span>
-                              <button
-                                onClick={() => updatePlayerStat("goals", playerStats.goals + 1)}
-                                disabled={activeMatch.played || !playerStats.attended}
-                                className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
-                              >
-                                +
-                              </button>
-                            </div>
+                              {/* Contador Goles */}
+                              <div className="flex items-center justify-center gap-1 font-mono text-xs">
+                                <button
+                                  onClick={() =>
+                                    updatePlayerStat("goals", Math.max(0, playerStats.goals - 1))
+                                  }
+                                  disabled={activeMatch.played || !playerStats.attended}
+                                  className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
+                                >
+                                  -
+                                </button>
+                                <span className="w-4 text-center tabular-nums">
+                                  {playerStats.goals}
+                                </span>
+                                <button
+                                  onClick={() => updatePlayerStat("goals", playerStats.goals + 1)}
+                                  disabled={activeMatch.played || !playerStats.attended}
+                                  className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
+                                >
+                                  +
+                                </button>
+                              </div>
 
-                            {/* Contador Asistencias */}
-                            <div className="flex items-center justify-center gap-1 font-mono text-xs">
-                              <button
-                                onClick={() => updatePlayerStat("assists", Math.max(0, playerStats.assists - 1))}
-                                disabled={activeMatch.played || !playerStats.attended}
-                                className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
-                              >
-                                -
-                              </button>
-                              <span className="w-4 text-center tabular-nums">{playerStats.assists}</span>
-                              <button
-                                onClick={() => updatePlayerStat("assists", playerStats.assists + 1)}
-                                disabled={activeMatch.played || !playerStats.attended}
-                                className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
-                              >
-                                +
-                              </button>
-                            </div>
+                              {/* Contador Asistencias */}
+                              <div className="flex items-center justify-center gap-1 font-mono text-xs">
+                                <button
+                                  onClick={() =>
+                                    updatePlayerStat(
+                                      "assists",
+                                      Math.max(0, playerStats.assists - 1),
+                                    )
+                                  }
+                                  disabled={activeMatch.played || !playerStats.attended}
+                                  className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
+                                >
+                                  -
+                                </button>
+                                <span className="w-4 text-center tabular-nums">
+                                  {playerStats.assists}
+                                </span>
+                                <button
+                                  onClick={() =>
+                                    updatePlayerStat("assists", playerStats.assists + 1)
+                                  }
+                                  disabled={activeMatch.played || !playerStats.attended}
+                                  className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
+                                >
+                                  +
+                                </button>
+                              </div>
 
-                            {/* MVP */}
-                            <div className="flex justify-center">
-                              <button
-                                onClick={() => !activeMatch.played && playerStats.attended && setMvp(activeMatch.id, playerStats.mvp ? null : pid)}
-                                disabled={activeMatch.played || !playerStats.attended}
-                                className={cn(
-                                  "p-1 rounded-full border transition",
-                                  playerStats.mvp
-                                    ? "bg-gold/20 border-gold/50 text-gold"
-                                    : "border-border/40 text-muted-foreground/30 hover:border-border hover:text-muted-foreground"
-                                )}
-                              >
-                                <Award className="size-4" />
-                              </button>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                              {/* MVP */}
+                              <div className="flex justify-center">
+                                <button
+                                  onClick={() =>
+                                    !activeMatch.played &&
+                                    playerStats.attended &&
+                                    setMvp(activeMatch.id, playerStats.mvp ? null : pid)
+                                  }
+                                  disabled={activeMatch.played || !playerStats.attended}
+                                  className={cn(
+                                    "p-1 rounded-full border transition",
+                                    playerStats.mvp
+                                      ? "bg-gold/20 border-gold/50 text-gold"
+                                      : "border-border/40 text-muted-foreground/30 hover:border-border hover:text-muted-foreground",
+                                  )}
+                                >
+                                  <Award className="size-4" />
+                                </button>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   </div>
-                </div>
                 )}
-
               </div>
             )}
           </section>
-
         </div>
       )}
 
@@ -1336,7 +1550,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h2 className="font-display text-2xl uppercase">Plantel de Jugadores</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">{players.length} jugadores en la base de datos</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {players.length} jugadores en la base de datos
+              </p>
             </div>
             <button
               onClick={openCreateModal}
@@ -1348,8 +1564,15 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
 
           {/* Search bar */}
           <div className="relative">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            <svg
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
             </svg>
             <input
               type="text"
@@ -1359,7 +1582,10 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
               className="w-full rounded-xl border border-border/60 bg-card pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-lime/50 focus:ring-1 focus:ring-lime/20 transition"
             />
             {playerSearch && (
-              <button onClick={() => setPlayerSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setPlayerSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+              >
                 <X className="size-3.5" />
               </button>
             )}
@@ -1369,7 +1595,12 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
           {(() => {
             const filtered = players.filter((p) => {
               const q = playerSearch.toLowerCase();
-              return !q || p.name.toLowerCase().includes(q) || p.nickname.toLowerCase().includes(q) || p.position.toLowerCase().includes(q);
+              return (
+                !q ||
+                p.name.toLowerCase().includes(q) ||
+                p.nickname.toLowerCase().includes(q) ||
+                p.position.toLowerCase().includes(q)
+              );
             });
 
             if (filtered.length === 0) {
@@ -1404,14 +1635,24 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                       <div className="font-semibold text-sm truncate">{p.nickname}</div>
                       <div className="text-xs text-muted-foreground truncate">{p.name}</div>
                       <div className="flex items-center gap-2 mt-1.5">
-                        <span className={cn(
-                          "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase",
-                          posColors[p.position] ?? "text-muted-foreground bg-secondary border-border",
-                        )}>
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase",
+                            posColors[p.position] ??
+                              "text-muted-foreground bg-secondary border-border",
+                          )}
+                        >
                           {p.position}
                         </span>
-                        <span className="text-[10px] text-muted-foreground font-mono">ELO {p.rating}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          ELO {p.rating}
+                        </span>
                       </div>
+                      {p.adminRole && (
+                        <span className="mt-1.5 inline-flex items-center rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gold">
+                          {p.adminRole === "general" ? "Admin total" : "Editar equipos"}
+                        </span>
+                      )}
                     </div>
 
                     {/* Actions (show on hover) */}
@@ -1444,17 +1685,21 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
         <div className="rounded-3xl border border-border/60 bg-card/40 backdrop-blur p-6 space-y-6 max-w-2xl mx-auto animate-fade-in font-sans">
           <div className="flex items-center gap-2 border-b border-border/40 pb-3">
             <Settings2 className="size-5 text-lime shadow-glow" />
-            <h2 className="font-display text-2xl uppercase">Configuración de Reglas de Puntuación</h2>
+            <h2 className="font-display text-2xl uppercase">
+              Configuración de Reglas de Puntuación
+            </h2>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Los puntos definidos abajo ponderan el peso de cada estadística individual. Afecta instantáneamente los totales de puntos en la pantalla de **Ranking**.
+            Los puntos definidos abajo ponderan el peso de cada estadística individual. Afecta
+            instantáneamente los totales de puntos en la pantalla de **Ranking**.
           </p>
 
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 pt-2">
-            
             {/* Asistencia */}
             <div className="space-y-1">
-              <label className="text-[10px] uppercase font-bold text-muted-foreground">Puntos por asistir</label>
+              <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                Puntos por asistir
+              </label>
               <input
                 type="number"
                 value={rules.attendance}
@@ -1465,7 +1710,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
 
             {/* Victoria */}
             <div className="space-y-1">
-              <label className="text-[10px] uppercase font-bold text-muted-foreground">Puntos por Victoria</label>
+              <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                Puntos por Victoria
+              </label>
               <input
                 type="number"
                 value={rules.win}
@@ -1476,7 +1723,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
 
             {/* Empate */}
             <div className="space-y-1">
-              <label className="text-[10px] uppercase font-bold text-muted-foreground">Puntos por Empate</label>
+              <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                Puntos por Empate
+              </label>
               <input
                 type="number"
                 value={rules.draw}
@@ -1487,7 +1736,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
 
             {/* MVP */}
             <div className="space-y-1">
-              <label className="text-[10px] uppercase font-bold text-muted-foreground">Puntos por MVP 👑</label>
+              <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                Puntos por MVP 👑
+              </label>
               <input
                 type="number"
                 value={rules.mvp}
@@ -1498,7 +1749,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
 
             {/* Gol de la Fecha */}
             <div className="space-y-1">
-              <label className="text-[10px] uppercase font-bold text-muted-foreground">Puntos Gol de la Fecha ⚽</label>
+              <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                Puntos Gol de la Fecha ⚽
+              </label>
               <input
                 type="number"
                 value={rules.goalOfTheDay}
@@ -1515,7 +1768,6 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                 Restablecer valores por defecto
               </button>
             </div>
-
           </div>
         </div>
       )}
@@ -1523,7 +1775,10 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
       {/* ── Modal Crear / Editar Jugador ── */}
       {isGeneralAdmin && showPlayerModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closePlayerModal} />
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={closePlayerModal}
+          />
           <div className="relative w-full max-w-md rounded-3xl bg-card border border-border/60 p-6 shadow-2xl animate-fade-in font-sans">
             <button
               onClick={closePlayerModal}
@@ -1533,11 +1788,15 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
             </button>
 
             <div className="mb-5">
-              <h2 className={`font-display text-2xl uppercase mb-1 ${modalMode === "create" ? "text-lime" : "text-foreground"}`}>
+              <h2
+                className={`font-display text-2xl uppercase mb-1 ${modalMode === "create" ? "text-lime" : "text-foreground"}`}
+              >
                 {modalMode === "create" ? "➕ Nuevo Jugador" : "✏️ Editar Jugador"}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {modalMode === "create" ? "Completá los datos para agregar al plantel." : "Modificá los datos del jugador."}
+                {modalMode === "create"
+                  ? "Completá los datos para agregar al plantel."
+                  : "Modificá los datos del jugador."}
               </p>
             </div>
 
@@ -1556,26 +1815,38 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">Nombre Completo *</label>
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                    Nombre Completo *
+                  </label>
                   <input
                     type="text"
                     required
                     autoFocus
                     placeholder="Ej. Juan Román Riquelme"
                     value={modalMode === "create" ? newPlayerName : editPlayerName}
-                    onChange={(e) => modalMode === "create" ? setNewPlayerName(e.target.value) : setEditPlayerName(e.target.value)}
+                    onChange={(e) =>
+                      modalMode === "create"
+                        ? setNewPlayerName(e.target.value)
+                        : setEditPlayerName(e.target.value)
+                    }
                     className="w-full rounded-xl border border-border bg-secondary px-4 py-2.5 text-sm focus:outline-none focus:border-lime focus:ring-1 focus:ring-lime/20 transition"
                   />
                 </div>
 
                 <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">Apodo / Nickname *</label>
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                    Apodo / Nickname *
+                  </label>
                   <input
                     type="text"
                     required
                     placeholder="Ej. Romi"
                     value={modalMode === "create" ? newPlayerNickname : editPlayerNickname}
-                    onChange={(e) => modalMode === "create" ? setNewPlayerNickname(e.target.value) : setEditPlayerNickname(e.target.value)}
+                    onChange={(e) =>
+                      modalMode === "create"
+                        ? setNewPlayerNickname(e.target.value)
+                        : setEditPlayerNickname(e.target.value)
+                    }
                     className="w-full rounded-xl border border-border bg-secondary px-4 py-2.5 text-sm focus:outline-none focus:border-lime focus:ring-1 focus:ring-lime/20 transition"
                   />
                 </div>
@@ -1588,18 +1859,54 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                     type="tel"
                     inputMode="numeric"
                     required={modalMode === "create"}
-                    placeholder={modalMode === "create" ? "Ej. 35123456" : "Completar solo para cargar o cambiar"}
+                    placeholder={
+                      modalMode === "create"
+                        ? "Ej. 35123456"
+                        : "Completar solo para cargar o cambiar"
+                    }
                     value={modalMode === "create" ? newPlayerDni : editPlayerDni}
-                    onChange={(e) => modalMode === "create" ? setNewPlayerDni(e.target.value) : setEditPlayerDni(e.target.value)}
+                    onChange={(e) =>
+                      modalMode === "create"
+                        ? setNewPlayerDni(e.target.value)
+                        : setEditPlayerDni(e.target.value)
+                    }
                     className="w-full rounded-xl border border-border bg-secondary px-4 py-2.5 text-sm font-mono focus:outline-none focus:border-lime focus:ring-1 focus:ring-lime/20 transition"
                   />
                 </div>
 
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                    Permiso de Organizador
+                  </label>
+                  <select
+                    value={modalMode === "create" ? newPlayerAdminRole : editPlayerAdminRole}
+                    onChange={(e) =>
+                      modalMode === "create"
+                        ? setNewPlayerAdminRole(e.target.value as AdminRole | "none")
+                        : setEditPlayerAdminRole(e.target.value as AdminRole | "none")
+                    }
+                    className="w-full rounded-xl border border-border bg-secondary px-4 py-2.5 text-sm focus:outline-none focus:border-lime transition"
+                  >
+                    <option value="none">Sin acceso admin</option>
+                    <option value="general">Admin total</option>
+                    <option value="equipos">Editar equipos</option>
+                  </select>
+                  <p className="text-[10px] leading-relaxed text-muted-foreground">
+                    El jugador con permiso entra a Organizador con su DNI verificado, sin usar PIN.
+                  </p>
+                </div>
+
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">Posición</label>
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                    Posición
+                  </label>
                   <select
                     value={modalMode === "create" ? newPlayerPos : editPlayerPos}
-                    onChange={(e) => modalMode === "create" ? setNewPlayerPos(e.target.value) : setEditPlayerPos(e.target.value)}
+                    onChange={(e) =>
+                      modalMode === "create"
+                        ? setNewPlayerPos(e.target.value)
+                        : setEditPlayerPos(e.target.value)
+                    }
                     className="w-full rounded-xl border border-border bg-secondary px-4 py-2.5 text-sm focus:outline-none focus:border-lime transition"
                   >
                     <option value="ARQ">🥅 Arquero</option>
@@ -1610,7 +1917,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">ELO / Rating</label>
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                    ELO / Rating
+                  </label>
                   <input
                     type="number"
                     min="1"
@@ -1619,7 +1928,11 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                     value={modalMode === "create" ? newPlayerRating : editPlayerRating}
                     onChange={(e) => {
                       const v = parseInt(e.target.value) || 1200;
-                      modalMode === "create" ? setNewPlayerRating(v) : setEditPlayerRating(v);
+                      if (modalMode === "create") {
+                        setNewPlayerRating(v);
+                      } else {
+                        setEditPlayerRating(v);
+                      }
                     }}
                     className="w-full rounded-xl border border-border bg-secondary px-4 py-2.5 text-sm text-center font-mono focus:outline-none focus:border-lime transition"
                   />
@@ -1629,7 +1942,10 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
               {/* ELO helper */}
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-secondary/50 rounded-xl px-3 py-2">
                 <span>💡</span>
-                <span>ELO base sugerido: <strong>1200</strong>. Rango: 800 (principiante) — 1800 (experto).</span>
+                <span>
+                  ELO base sugerido: <strong>1200</strong>. Rango: 800 (principiante) — 1800
+                  (experto).
+                </span>
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -1654,9 +1970,11 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
 
       {/* ── Modal Crear Partido ── */}
       {isGeneralAdmin && showCreateMatch && (
-
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreateMatch(false)} />
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowCreateMatch(false)}
+          />
           <div className="relative w-full max-w-sm rounded-3xl bg-card border border-border/60 p-6 shadow-2xl animate-fade-in font-sans">
             <button
               onClick={() => setShowCreateMatch(false)}
@@ -1665,10 +1983,14 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
               <X className="size-4" />
             </button>
             <h2 className="font-display text-2xl uppercase mb-1 text-lime">Crear Nuevo Partido</h2>
-            <p className="text-xs text-muted-foreground mb-4">Ingresá los datos del picado en Supabase.</p>
+            <p className="text-xs text-muted-foreground mb-4">
+              Ingresá los datos del picado en Supabase.
+            </p>
             <form onSubmit={handleCreateMatch} className="space-y-3">
               <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-muted-foreground">Sede / Complejo</label>
+                <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                  Sede / Complejo
+                </label>
                 <input
                   type="text"
                   required
@@ -1680,7 +2002,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">Fecha</label>
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                    Fecha
+                  </label>
                   <input
                     type="date"
                     required
@@ -1690,7 +2014,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">Hora</label>
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                    Hora
+                  </label>
                   <input
                     type="time"
                     required
@@ -1702,7 +2028,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">Formato</label>
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                    Formato
+                  </label>
                   <select
                     value={newMatchFormato}
                     onChange={(e) => setNewMatchFormato(e.target.value)}
@@ -1714,7 +2042,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">Cupo Máximo</label>
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                    Cupo Máximo
+                  </label>
                   <input
                     type="number"
                     min="2"
@@ -1736,7 +2066,6 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
           </div>
         </div>
       )}
-
     </div>
   );
 }

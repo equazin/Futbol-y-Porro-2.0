@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { matches as seedMatches, players as seedPlayers, type Match, type Player } from "@/lib/mock-data";
+import {
+  matches as seedMatches,
+  players as seedPlayers,
+  type Match,
+  type Player,
+} from "@/lib/mock-data";
 import {
   adminCreateMatch,
   adminUpdateMatch,
@@ -13,6 +18,7 @@ import {
   getMatchesWithSignups,
   getJugadores,
 } from "@/lib/api/picado.functions";
+import type { PicadoAdminRole } from "@/types/picado";
 
 export type PlayerStats = {
   attended: boolean;
@@ -29,8 +35,8 @@ export type MatchResult = {
   teamB: string[];
   stats: Record<string, PlayerStats>;
   votes?: MatchVote[];
-  mvpResult?: string;  // player_id of confirmed MVP winner
-  golResult?: string;  // player_id of confirmed Gol de la Fecha winner
+  mvpResult?: string; // player_id of confirmed MVP winner
+  golResult?: string; // player_id of confirmed Gol de la Fecha winner
 };
 
 type MatchVote = {
@@ -68,6 +74,8 @@ export const defaultRules: ScoringRules = {
 };
 
 export type AdminRole = "general" | "equipos";
+export type AdminSource = "pin" | "dni";
+export type PicadoPlayer = Player & { adminRole?: PicadoAdminRole | null };
 
 const ADMIN_ACCESS_CODES: Array<{ pin: string; role: AdminRole }> = [
   { pin: "1984", role: "general" },
@@ -77,9 +85,11 @@ const ADMIN_ACCESS_CODES: Array<{ pin: string; role: AdminRole }> = [
 type State = {
   matches: StoredMatch[];
   rules: ScoringRules;
-  players: Player[];
+  players: PicadoPlayer[];
   isAdmin: boolean;
   adminRole: AdminRole | null;
+  adminSource: AdminSource | null;
+  adminPlayerId: string | null;
 };
 
 type Actions = {
@@ -95,13 +105,35 @@ type Actions = {
   resetRules: () => void;
   // Admin and Player CRUD Actions
   loginAdmin: (pin: string) => boolean;
+  loginAdminByPlayer: (role: AdminRole, playerId: string) => void;
   logoutAdmin: () => void;
-  addPlayer: (name: string, nickname: string, position: string, rating: number, foto_url?: string | null, dni?: string | null) => Promise<void>;
-  updatePlayer: (id: string, patch: Partial<Player> & { dni?: string | null }) => Promise<void>;
+  addPlayer: (
+    name: string,
+    nickname: string,
+    position: string,
+    rating: number,
+    foto_url?: string | null,
+    dni?: string | null,
+    adminRole?: PicadoAdminRole | null,
+  ) => Promise<void>;
+  updatePlayer: (
+    id: string,
+    patch: Partial<PicadoPlayer> & { dni?: string | null; adminRole?: PicadoAdminRole | null },
+  ) => Promise<void>;
   deletePlayer: (id: string) => Promise<void>;
-  createMatch: (fecha: string, hora: string, sede: string, formato: string, cupo_max: number) => Promise<void>;
+  createMatch: (
+    fecha: string,
+    hora: string,
+    sede: string,
+    formato: string,
+    cupo_max: number,
+  ) => Promise<void>;
   deleteMatch: (id: string) => Promise<void>;
-  addSignupManual: (matchId: string, playerId: string, estado: "titular" | "espera") => Promise<void>;
+  addSignupManual: (
+    matchId: string,
+    playerId: string,
+    estado: "titular" | "espera",
+  ) => Promise<void>;
   removeSignupManual: (matchId: string, playerId: string) => Promise<void>;
   loadFromDatabase: () => Promise<void>;
 };
@@ -237,6 +269,8 @@ export const useStore = create<State & Actions>()(
       players: seedPlayers,
       isAdmin: false,
       adminRole: null,
+      adminSource: null,
+      adminPlayerId: null,
 
       setTeams: async (matchId, teamA, teamB) => {
         let updatedResult: MatchResult | undefined;
@@ -286,7 +320,12 @@ export const useStore = create<State & Actions>()(
           const matches = s.matches.map((m) => {
             if (m.id !== matchId) return m;
             const base = m.result ?? initialResult(m);
-            const prev = base.stats[playerId] ?? { attended: true, goals: 0, assists: 0, mvp: false };
+            const prev = base.stats[playerId] ?? {
+              attended: true,
+              goals: 0,
+              assists: 0,
+              mvp: false,
+            };
             updatedResult = {
               ...base,
               stats: { ...base.stats, [playerId]: { ...prev, ...patch } },
@@ -360,7 +399,9 @@ export const useStore = create<State & Actions>()(
         });
         set((s) => ({
           matches: s.matches.map((m) =>
-            m.id !== matchId ? m : { ...m, played: true, status: "closed" as const, dbEstado: "jugado" },
+            m.id !== matchId
+              ? m
+              : { ...m, played: true, status: "closed" as const, dbEstado: "jugado" },
           ),
         }));
       },
@@ -435,7 +476,15 @@ export const useStore = create<State & Actions>()(
           if (updated?.dbEstado === "cerrado") return s;
           return {
             matches: s.matches.map((m) =>
-              m.id !== matchId ? m : { ...m, played: true, status: "closed" as const, dbEstado: "cerrado", result: notasJson },
+              m.id !== matchId
+                ? m
+                : {
+                    ...m,
+                    played: true,
+                    status: "closed" as const,
+                    dbEstado: "cerrado",
+                    result: notasJson,
+                  },
             ),
           };
         });
@@ -450,7 +499,9 @@ export const useStore = create<State & Actions>()(
         });
         set((s) => ({
           matches: s.matches.map((m) =>
-            m.id !== matchId ? m : { ...m, played: false, status: "open" as const, dbEstado: "abierto" },
+            m.id !== matchId
+              ? m
+              : { ...m, played: false, status: "open" as const, dbEstado: "abierto" },
           ),
         }));
       },
@@ -461,14 +512,26 @@ export const useStore = create<State & Actions>()(
       loginAdmin: (pin) => {
         const access = ADMIN_ACCESS_CODES.find((entry) => pin.trim() === entry.pin);
         if (access) {
-          set({ isAdmin: true, adminRole: access.role });
+          set({ isAdmin: true, adminRole: access.role, adminSource: "pin", adminPlayerId: null });
           return true;
         }
         return false;
       },
-      logoutAdmin: () => set({ isAdmin: false, adminRole: null }),
+      loginAdminByPlayer: (role, playerId) => {
+        set({ isAdmin: true, adminRole: role, adminSource: "dni", adminPlayerId: playerId });
+      },
+      logoutAdmin: () =>
+        set({ isAdmin: false, adminRole: null, adminSource: null, adminPlayerId: null }),
 
-      addPlayer: async (name, nickname, position, rating, foto_url = null, dni = null) => {
+      addPlayer: async (
+        name,
+        nickname,
+        position,
+        rating,
+        foto_url = null,
+        dni = null,
+        adminRole = null,
+      ) => {
         const SPANISH_POS_MAP: Record<string, string> = {
           ARQ: "arquero",
           DEF: "defensor",
@@ -485,6 +548,7 @@ export const useStore = create<State & Actions>()(
             elo: rating,
             foto_url: foto_url || null,
             dni: dni || null,
+            admin_role: adminRole,
           },
         });
         const store = useStore.getState();
@@ -492,7 +556,15 @@ export const useStore = create<State & Actions>()(
       },
 
       updatePlayer: async (id, patch) => {
-        const patchData: any = {};
+        const patchData: {
+          nombre?: string;
+          apodo?: string | null;
+          posicion?: string | null;
+          elo?: number;
+          foto_url?: string | null;
+          dni?: string | null;
+          admin_role?: PicadoAdminRole | null;
+        } = {};
         if (patch.name !== undefined) patchData.nombre = patch.name;
         if (patch.nickname !== undefined) patchData.apodo = patch.nickname || null;
         if (patch.position !== undefined) {
@@ -507,6 +579,7 @@ export const useStore = create<State & Actions>()(
         if (patch.rating !== undefined) patchData.elo = patch.rating;
         if (patch.foto_url !== undefined) patchData.foto_url = patch.foto_url || null;
         if (patch.dni !== undefined) patchData.dni = patch.dni || null;
+        if (patch.adminRole !== undefined) patchData.admin_role = patch.adminRole;
 
         await adminUpdatePlayer({
           data: {
@@ -574,7 +647,7 @@ export const useStore = create<State & Actions>()(
 
       loadFromDatabase: async () => {
         const slug = import.meta.env.VITE_GROUP_SLUG || "fyp-fc";
-        const dbMatches = await getMatchesWithSignups({ data: { slug } });
+        const dbMatches = (await getMatchesWithSignups({ data: { slug } })) as StoredMatch[];
         const dbPlayers = await getJugadores();
 
         const POS_MAP: Record<string, string> = {
@@ -595,24 +668,25 @@ export const useStore = create<State & Actions>()(
           "oklch(0.72 0.2 340)",
         ];
 
-        const mappedPlayers: Player[] = dbPlayers.map((p, i) => {
+        const mappedPlayers: PicadoPlayer[] = dbPlayers.map((p, i) => {
           const nickname = p.apodo || p.nombre;
           return {
             id: p.id,
             name: p.nombre,
             nickname: nickname,
-            position: (POS_MAP[p.posicion || ""] || "MED") as any,
+            position: (POS_MAP[p.posicion || ""] || "MED") as Player["position"],
             rating: p.elo ?? 1000,
             goals: p.goles ?? 0,
             played: p.partidos_jugados ?? 0,
             initials: nickname.slice(0, 2).toUpperCase(),
             color: colors[i % colors.length],
             foto_url: p.foto_url || null,
+            adminRole: p.picado_admin_role ?? null,
           };
         });
 
         set({
-          matches: dbMatches as any,
+          matches: dbMatches,
           players: mappedPlayers,
         });
       },
@@ -626,6 +700,8 @@ export const useStore = create<State & Actions>()(
       partialize: (state) => ({
         isAdmin: state.isAdmin,
         adminRole: state.adminRole,
+        adminSource: state.adminSource,
+        adminPlayerId: state.adminPlayerId,
       }),
     },
   ),
@@ -658,27 +734,32 @@ export type PlayerPoints = {
   nemesis?: { player: Player; winRate: number; matches: number };
 };
 
-export function computeRanking(matches: StoredMatch[], rules: ScoringRules, storePlayers: Player[]): PlayerPoints[] {
-  const map: Record<string, PlayerPoints & { absences: number; streak: number }> = Object.fromEntries(
-    storePlayers.map((p) => [
-      p.id,
-      {
-        player: p,
-        attended: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        goals: 0,
-        assists: 0,
-        mvps: 0,
-        goalsOfTheDay: 0,
-        points: 0,
-        absences: 0,
-        streak: 0,
-        badges: [],
-      },
-    ]),
-  );
+export function computeRanking(
+  matches: StoredMatch[],
+  rules: ScoringRules,
+  storePlayers: Player[],
+): PlayerPoints[] {
+  const map: Record<string, PlayerPoints & { absences: number; streak: number }> =
+    Object.fromEntries(
+      storePlayers.map((p) => [
+        p.id,
+        {
+          player: p,
+          attended: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          goals: 0,
+          assists: 0,
+          mvps: 0,
+          goalsOfTheDay: 0,
+          points: 0,
+          absences: 0,
+          streak: 0,
+          badges: [],
+        },
+      ]),
+    );
 
   // 1. Calcular estadísticas básicas y ausencias
   for (const m of matches) {
@@ -715,9 +796,7 @@ export function computeRanking(matches: StoredMatch[], rules: ScoringRules, stor
       else if (inA || inB) row.losses += 1;
 
       row.points +=
-        rules.attendance +
-        (s.mvp ? rules.mvp : 0) +
-        (s.golVote ? rules.goalOfTheDay : 0);
+        rules.attendance + (s.mvp ? rules.mvp : 0) + (s.golVote ? rules.goalOfTheDay : 0);
     }
     // win/draw/loss points
     for (const pid of teamA) {
@@ -764,11 +843,9 @@ export function computeRanking(matches: StoredMatch[], rules: ScoringRules, stor
 
   // Muralla defensiva (GK / DEF con al menos 3 PJ y mejor win rate)
   const defenders = activeRows.filter(
-    (r) => (r.player.position === "ARQ" || r.player.position === "DEF") && r.attended >= 3
+    (r) => (r.player.position === "ARQ" || r.player.position === "DEF") && r.attended >= 3,
   );
-  const maxWinRate = defenders.length
-    ? Math.max(...defenders.map((r) => r.wins / r.attended))
-    : 0;
+  const maxWinRate = defenders.length ? Math.max(...defenders.map((r) => r.wins / r.attended)) : 0;
 
   // 4. Asignar insignias
   for (const r of rows) {
@@ -856,8 +933,12 @@ export function computeRanking(matches: StoredMatch[], rules: ScoringRules, stor
     const activeA = teamA.filter((pid) => stats[pid]?.attended && Number.isFinite(tempElos[pid]));
     const activeB = teamB.filter((pid) => stats[pid]?.attended && Number.isFinite(tempElos[pid]));
 
-    const avgA = activeA.length ? activeA.reduce((sum, pid) => sum + tempElos[pid], 0) / activeA.length : 1200;
-    const avgB = activeB.length ? activeB.reduce((sum, pid) => sum + tempElos[pid], 0) / activeB.length : 1200;
+    const avgA = activeA.length
+      ? activeA.reduce((sum, pid) => sum + tempElos[pid], 0) / activeA.length
+      : 1200;
+    const avgB = activeB.length
+      ? activeB.reduce((sum, pid) => sum + tempElos[pid], 0) / activeB.length
+      : 1200;
 
     const expectedA = 1 / (1 + Math.pow(10, (avgB - avgA) / 400));
     const expectedB = 1 - expectedA;
@@ -1012,13 +1093,23 @@ export function computeRanking(matches: StoredMatch[], rules: ScoringRules, stor
       row.eloHistory = eloHistoryMap[p.id].map((val) => val + offset);
 
       if (bestP && bestMatches > 0) {
-        row.bestPartner = { player: bestP, winRate: Math.round(bestWR * 100), matches: bestMatches };
+        row.bestPartner = {
+          player: bestP,
+          winRate: Math.round(bestWR * 100),
+          matches: bestMatches,
+        };
       }
       if (nemesisP && nemesisMatches > 0 && nemesisWR < 1) {
-        row.nemesis = { player: nemesisP, winRate: Math.round(nemesisWR * 100), matches: nemesisMatches };
+        row.nemesis = {
+          player: nemesisP,
+          winRate: Math.round(nemesisWR * 100),
+          matches: nemesisMatches,
+        };
       }
     }
   }
 
-  return Object.values(map).sort((a, b) => b.points - a.points || b.player.rating - a.player.rating);
+  return Object.values(map).sort(
+    (a, b) => b.points - a.points || b.player.rating - a.player.rating,
+  );
 }

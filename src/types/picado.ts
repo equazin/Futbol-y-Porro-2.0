@@ -1,5 +1,6 @@
 export type PicadoEstado = "programado" | "abierto" | "cerrado" | "jugado" | "cancelado";
 export type SignupEstado = "titular" | "espera" | "baja";
+export type PicadoAdminRole = "general" | "equipos";
 
 export type PicadoGroup = {
   id: string;
@@ -105,6 +106,7 @@ export type IdentificarJugadorResult = {
   posicion?: ExistingPlayer["posicion"];
   foto_url?: string | null;
   elo?: number;
+  admin_role?: PicadoAdminRole | null;
 };
 
 // Stored in localStorage — only player_id and name, NEVER the DNI
@@ -115,4 +117,5 @@ export type StoredPlayer = {
   posicion?: ExistingPlayer["posicion"];
   foto_url?: string | null;
   elo?: number;
+  admin_role?: PicadoAdminRole | null;
 };

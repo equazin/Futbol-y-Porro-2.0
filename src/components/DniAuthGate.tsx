@@ -43,6 +43,7 @@ export function DniAuthGate({ children }: { children: ReactNode }) {
         posicion: result.posicion ?? null,
         foto_url: result.foto_url ?? null,
         elo: result.elo ?? 1000,
+        admin_role: result.admin_role ?? null,
       };
 
       remember(player);

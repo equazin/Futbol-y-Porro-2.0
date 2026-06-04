@@ -22,7 +22,7 @@ const POS_MAP: Record<string, Player["position"]> = {
 
 function Perfil() {
   const { stored, clear } = usePicadoPlayer();
-  const { matches, rules, players } = useStore();
+  const { matches, rules, players, logoutAdmin } = useStore();
 
   const ranking = useMemo(() => computeRanking(matches, rules, players), [matches, rules, players]);
   const playerMap = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
@@ -86,7 +86,10 @@ function Perfil() {
             </div>
 
             <button
-              onClick={clear}
+              onClick={() => {
+                clear();
+                logoutAdmin();
+              }}
               className="inline-flex items-center gap-2 rounded-xl border border-out/30 bg-out/10 px-4 py-2.5 text-sm font-semibold text-out transition hover:bg-out/15"
             >
               <LogOut className="size-4" />

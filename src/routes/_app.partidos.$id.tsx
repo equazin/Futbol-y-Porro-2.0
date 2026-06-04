@@ -531,7 +531,7 @@ function VotingSection({
             voterPlayerId={stored?.player_id ?? null}
             onSuccess={(res) => {
               if (res.player_id && res.nombre) {
-                remember({ player_id: res.player_id, nombre: res.nombre });
+                remember({ ...(stored ?? {}), player_id: res.player_id, nombre: res.nombre });
               }
               setStep("done");
               void router.invalidate();
@@ -867,7 +867,7 @@ function MatchDetail() {
 
       // Guardar player_id + nombre en localStorage (nunca el DNI)
       if (result.player_id && result.nombre) {
-        remember({ player_id: result.player_id, nombre: result.nombre });
+        remember({ ...(stored ?? {}), player_id: result.player_id, nombre: result.nombre });
       }
 
       toast.success(result.message, {

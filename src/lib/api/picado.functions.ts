@@ -5,6 +5,7 @@ import type {
   AnotarseResult,
   VotoResult,
   IdentificarJugadorResult,
+  PicadoAdminRole,
 } from "@/types/picado";
 
 const slug = () => import.meta.env.VITE_GROUP_SLUG || "fyp-fc";
@@ -20,17 +21,31 @@ export type JugadorRow = {
   tipo: string;
   partidos_jugados: number;
   goles: number;
+  picado_admin_role?: PicadoAdminRole | null;
 };
 
 // ── Fetch: lista de jugadores activos con stats ───────────
 export const getJugadores = async (): Promise<JugadorRow[]> => {
-  const { data, error } = await supabase
+  const selectWithAdminRole =
+    "id, nombre, apodo, posicion, elo, foto_url, tipo, picado_admin_role, match_players(goles, presente, matches(estado))";
+  const selectBase =
+    "id, nombre, apodo, posicion, elo, foto_url, tipo, match_players(goles, presente, matches(estado))";
+
+  let { data, error } = await supabase
     .from("players")
-    .select(
-      "id, nombre, apodo, posicion, elo, foto_url, tipo, match_players(goles, presente, matches(estado))",
-    )
+    .select(selectWithAdminRole)
     .eq("activo", true)
     .order("elo", { ascending: false });
+
+  if (error && error.message.includes("picado_admin_role")) {
+    const fallback = await supabase
+      .from("players")
+      .select(selectBase)
+      .eq("activo", true)
+      .order("elo", { ascending: false });
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) throw new Error(error.message);
 
@@ -49,6 +64,7 @@ export const getJugadores = async (): Promise<JugadorRow[]> => {
       elo: p.elo ?? 1000,
       foto_url: p.foto_url,
       tipo: p.tipo ?? "titular",
+      picado_admin_role: (p.picado_admin_role as PicadoAdminRole | null) ?? null,
       partidos_jugados: cerrados.filter((mp) => mp.presente).length,
       goles: cerrados.reduce((sum, mp) => sum + (mp.goles ?? 0), 0),
     };
@@ -282,6 +298,7 @@ export const adminCreatePlayer = async ({
     elo: number;
     foto_url: string | null;
     dni?: string | null;
+    admin_role?: PicadoAdminRole | null;
   };
 }) => {
   const { data: player, error } = await supabase.rpc("picado_admin_create_player", {
@@ -291,6 +308,7 @@ export const adminCreatePlayer = async ({
     p_elo: data.elo,
     p_foto_url: data.foto_url,
     p_dni: data.dni ?? null,
+    p_admin_role: data.admin_role ?? null,
   });
 
   if (error) throw new Error(error.message);
@@ -310,6 +328,7 @@ export const adminUpdatePlayer = async ({
       elo?: number;
       foto_url?: string | null;
       dni?: string | null;
+      admin_role?: PicadoAdminRole | null;
     };
   };
 }) => {
@@ -322,6 +341,8 @@ export const adminUpdatePlayer = async ({
     p_foto_url: data.patch.foto_url ?? null,
     p_dni: data.patch.dni ?? null,
     p_update_dni: data.patch.dni !== undefined,
+    p_admin_role: data.patch.admin_role ?? null,
+    p_update_admin_role: data.patch.admin_role !== undefined,
   });
 
   if (error) throw new Error(error.message);
