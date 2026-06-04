@@ -8,6 +8,11 @@ import { writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
+// SSR background rendering errors are non-fatal — the client JS handles rendering.
+process.on("unhandledRejection", (reason) => {
+  console.warn("  ⚠ Background SSR warning (non-fatal):", reason?.message ?? reason);
+});
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 

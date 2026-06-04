@@ -71,7 +71,7 @@ function Home() {
                     <div className="border-l border-border/30 h-8" />
                     <div>
                       <span className="block text-[8px] uppercase tracking-widest text-muted-foreground/60 mb-0.5 font-bold">Hora</span>
-                      <span className="font-display text-base uppercase text-foreground">{next.hora.slice(0, 5)} hs</span>
+                      <span className="font-display text-base uppercase text-foreground">{next.hora?.slice(0, 5) ?? next.date?.slice(11, 16)} hs</span>
                     </div>
                   </div>
                 </div>
