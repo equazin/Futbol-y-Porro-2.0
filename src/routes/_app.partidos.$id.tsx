@@ -113,7 +113,7 @@ function MatchDetail() {
           <span className="text-xs text-muted-foreground tabular-nums">({match.confirmed.length})</span>
         </div>
         <ul className="grid gap-2 sm:grid-cols-2">
-          {match.confirmed.map((id, i) => {
+          {match.confirmed.map((id: string, i: number) => {
             const p = playerById(id)!;
             return (
               <li key={id} className="flex items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-2.5">
@@ -139,7 +139,7 @@ function MatchDetail() {
             <span className="text-xs text-muted-foreground tabular-nums">({match.waitlist.length})</span>
           </div>
           <ul className="grid gap-2 sm:grid-cols-2">
-            {match.waitlist.map((id) => {
+            {match.waitlist.map((id: string) => {
               const p = playerById(id)!;
               return (
                 <li key={id} className="flex items-center gap-3 rounded-xl border border-waitlist/30 bg-waitlist/5 px-3 py-2.5">
