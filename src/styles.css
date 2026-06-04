@@ -148,3 +148,49 @@
     linear-gradient(90deg, var(--pitch-line) 1px, transparent 1px);
   background-size: 40px 40px;
 }
+
+/* Premium Digital Match Ticket */
+@utility ticket-card {
+  position: relative;
+  background: color-mix(in oklab, var(--card) 75%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in oklab, var(--border) 40%, transparent);
+}
+
+@utility ticket-notch-top {
+  position: absolute;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background-color: oklch(0.18 0.03 150); /* Matches body background */
+  border: 1px solid color-mix(in oklab, var(--border) 40%, transparent);
+  z-index: 10;
+}
+
+@utility ticket-notch-bottom {
+  position: absolute;
+  bottom: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background-color: oklch(0.18 0.03 150); /* Matches body background */
+  border: 1px solid color-mix(in oklab, var(--border) 40%, transparent);
+  z-index: 10;
+}
+
+@utility ticket-divider-line {
+  border-left: 2px dashed color-mix(in oklab, var(--border) 40%, transparent);
+  height: 100%;
+}
+
+@utility shadow-neon-glow {
+  box-shadow: 0 0 15px -3px color-mix(in oklab, var(--lime) 15%, transparent),
+              0 0 40px -10px color-mix(in oklab, var(--lime) 20%, transparent);
+}
+
+@utility shadow-gold-glow {
+  box-shadow: 0 0 15px -3px color-mix(in oklab, var(--gold) 15%, transparent),
+              0 0 40px -10px color-mix(in oklab, var(--gold) 20%, transparent);
+}
+

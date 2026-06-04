@@ -85,6 +85,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Organizá tu picado sin quilombo." },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "Picado" },
+      { property: "og:image", content: "/og-image.jpg" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
@@ -120,8 +121,22 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+import { useStore } from "../store/match-store";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const loadFromDatabase = useStore((s) => s.loadFromDatabase);
+
+  useEffect(() => {
+    void loadFromDatabase();
+
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register(`${import.meta.env.BASE_URL}sw.js`)
+        .then((reg) => console.log("Service Worker registered on scope:", reg.scope))
+        .catch((err) => console.error("Service Worker registration failed:", err));
+    }
+  }, [loadFromDatabase]);
 
   return (
     <QueryClientProvider client={queryClient}>

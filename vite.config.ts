@@ -7,9 +7,11 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  vite: {
+    // VITE_BASE is set at build time for GitHub Pages (e.g. /Futbol-y-Porro-2.0/)
+    base: process.env.VITE_BASE || "/",
+  },
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
     server: { entry: "server" },
   },
 });

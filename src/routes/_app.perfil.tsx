@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Bell, LogOut, Settings, Trophy } from "lucide-react";
-import { players, matches } from "@/lib/mock-data";
+import { players } from "@/lib/mock-data";
+import { useStore } from "@/store/match-store";
 import { PlayerAvatar } from "@/components/Avatar";
 
 export const Route = createFileRoute("/_app/perfil")({
@@ -8,6 +9,7 @@ export const Route = createFileRoute("/_app/perfil")({
 });
 
 function Perfil() {
+  const { matches } = useStore();
   const me = players[0]; // mock
   const upcoming = matches.filter((m) => m.status === "open" && m.confirmed.includes(me.id));
 

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { matches } from "@/lib/mock-data";
+import { useStore } from "@/store/match-store";
 import { MatchCard } from "@/components/MatchCard";
 
 export const Route = createFileRoute("/_app/partidos/")({
@@ -7,6 +7,7 @@ export const Route = createFileRoute("/_app/partidos/")({
 });
 
 function PartidosList() {
+  const { matches } = useStore();
   const open = matches.filter((m) => m.status === "open");
   const past = matches.filter((m) => m.status !== "open");
 
