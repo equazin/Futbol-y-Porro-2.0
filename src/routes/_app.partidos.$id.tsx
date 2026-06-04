@@ -1,17 +1,39 @@
 import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, CalendarDays, Check, Clock, MapPin, Share2, UserMinus, UserPlus, Users } from "lucide-react";
-import { matches, playerById } from "@/lib/mock-data";
+import { matches, playerById, type Match } from "@/lib/mock-data";
 import { PlayerAvatar } from "@/components/Avatar";
 import { Countdown } from "@/components/Countdown";
 import { cn } from "@/lib/utils";
+import { shareMatch } from "@/lib/share";
 
 export const Route = createFileRoute("/_app/partidos/$id")({
   component: MatchDetail,
-  loader: ({ params }) => {
+  loader: ({ params }): { match: Match } => {
     const match = matches.find((m) => m.id === params.id);
     if (!match) throw notFound();
     return { match };
+  },
+  head: ({ loaderData, params }) => {
+    const m = loaderData?.match;
+    const when = m
+      ? new Date(m.date).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" })
+      : "";
+    const title = m ? `Picado ${m.format} · ${when}` : "Picado";
+    const desc = m
+      ? `${m.venue} · ${m.confirmed.length}/${m.capacity} anotados. Anotate al toque.`
+      : "Organizá tu picado sin quilombo.";
+    return {
+      meta: [
+        { title: `${title} — Picado` },
+        { name: "description", content: desc },
+        { property: "og:title", content: title },
+        { property: "og:description", content: desc },
+        { property: "og:image", content: "/og-image.jpg" },
+        { property: "og:url", content: `/partidos/${params.id}` },
+        { name: "twitter:image", content: "/og-image.jpg" },
+      ],
+    };
   },
 });
 
