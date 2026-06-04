@@ -99,7 +99,11 @@ function MatchDetail() {
           >
             {joined ? <><UserMinus className="size-4" /> Bajarme</> : <><UserPlus className="size-4" /> Anotarme</>}
           </button>
-          <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:border-lime/40 transition">
+          <button
+            onClick={() => shareMatch({ id: match.id, title: `Picado ${match.format}`, text: `${match.venue} · ${new Date(match.date).toLocaleString("es-AR")}` })}
+            aria-label="Compartir partido"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:border-lime/40 transition"
+          >
             <Share2 className="size-4" /> Compartir
           </button>
         </div>
