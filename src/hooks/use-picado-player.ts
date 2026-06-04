@@ -5,6 +5,9 @@ const STORAGE_KEY = "picado_player_v2";
 const LEGACY_STORAGE_KEY = "picado_player_v1";
 
 const listeners = new Set<() => void>();
+let cachedStorageKey: string | null = null;
+let cachedRawValue: string | null = null;
+let cachedSnapshot: StoredPlayer | null = null;
 
 function isStoredPlayer(value: unknown): value is StoredPlayer {
   if (!value || typeof value !== "object") return false;
@@ -19,13 +22,26 @@ function readStorage(): StoredPlayer | null {
     try {
       const raw = window.localStorage.getItem(key);
       if (!raw) continue;
+
+      if (cachedStorageKey === key && cachedRawValue === raw) {
+        return cachedSnapshot;
+      }
+
       const parsed = JSON.parse(raw) as unknown;
-      if (isStoredPlayer(parsed)) return parsed;
+      if (isStoredPlayer(parsed)) {
+        cachedStorageKey = key;
+        cachedRawValue = raw;
+        cachedSnapshot = parsed;
+        return cachedSnapshot;
+      }
     } catch {
       window.localStorage.removeItem(key);
     }
   }
 
+  cachedStorageKey = null;
+  cachedRawValue = null;
+  cachedSnapshot = null;
   return null;
 }
 
@@ -54,13 +70,20 @@ function subscribe(listener: () => void) {
 
 function save(player: StoredPlayer) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(player));
+  const raw = JSON.stringify(player);
+  cachedStorageKey = STORAGE_KEY;
+  cachedRawValue = raw;
+  cachedSnapshot = player;
+  window.localStorage.setItem(STORAGE_KEY, raw);
   window.localStorage.removeItem(LEGACY_STORAGE_KEY);
   emitChange();
 }
 
 function clearStoredPlayer() {
   if (typeof window === "undefined") return;
+  cachedStorageKey = null;
+  cachedRawValue = null;
+  cachedSnapshot = null;
   window.localStorage.removeItem(STORAGE_KEY);
   window.localStorage.removeItem(LEGACY_STORAGE_KEY);
   emitChange();
