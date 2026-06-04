@@ -17,6 +17,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Los secrets de Supabase están cargados como Environment secrets del
+    # environment "github-pages". El build los necesita en tiempo de compilación
+    # (Vite los embebe), así que este job debe declarar el mismo environment;
+    # de lo contrario secrets.VITE_* viene vacío y se usa el placeholder.
+    environment:
+      name: github-pages
     steps:
       - name: Checkout
         uses: actions/checkout@v4
