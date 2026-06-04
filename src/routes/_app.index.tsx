@@ -53,7 +53,7 @@ function Home() {
                 <div className="flex-1 p-6 flex flex-col justify-between space-y-6">
                   <div>
                     <span className="inline-flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest px-2.5 py-0.5 rounded-full bg-lime/10 border border-lime/30 text-lime mb-2.5 select-none">
-                      🎫 Entrada de Picado
+                      🎫 Futbol y Porro FC
                     </span>
                     <h3 className="font-display text-3xl md:text-4xl uppercase leading-none text-foreground font-black">
                       {new Date(next.date).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long" })}
@@ -126,7 +126,7 @@ function Home() {
                       onClick={() =>
                         shareMatch({
                           id: next.id,
-                          title: `Picado ${next.format}`,
+                          title: `F y P FC ${next.format}`,
                           text: `${next.venue} · ${new Date(next.date).toLocaleString("es-AR")}`,
                         })
                       }

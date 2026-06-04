@@ -1,7 +1,7 @@
 {
-  "name": "Picado — Organizá tu picado",
-  "short_name": "Picado",
-  "description": "Organizá tu picado sin quilombo. Anotate, ve quién juega, armá los equipos.",
+  "name": "Futbol y Porro FC",
+  "short_name": "F y P FC",
+  "description": "La app del Futbol y Porro FC. Anotate al próximo picado, mirá quién juega y seguí el ranking.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

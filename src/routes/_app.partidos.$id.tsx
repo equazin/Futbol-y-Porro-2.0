@@ -44,21 +44,21 @@ export const Route = createFileRoute("/_app/partidos/$id")({
           month: "long",
         })
       : "";
-    const title = m ? `Picado ${m.formato} · ${fecha}` : "Picado";
+    const title = m ? `F y P FC ${m.formato} · ${fecha}` : "Futbol y Porro FC";
     const titulares = loaderData?.titulares.length ?? 0;
     const desc = m
       ? `${m.sede} · ${titulares}/${m.cupo_max} anotados. Anotate al toque.`
-      : "Organizá tu picado sin quilombo.";
+      : "La app del Futbol y Porro FC.";
     return {
       meta: [
-        { title: `${title} — Picado` },
+        { title: `${title} — Futbol y Porro FC` },
         { name: "description", content: desc },
         { property: "og:title", content: title },
         { property: "og:description", content: desc },
         { property: "og:url", content: `/partidos/${params.id}` },
         { property: "og:image", content: "/og-image.jpg" },
         { property: "og:type", content: "website" },
-        { property: "og:site_name", content: "Picado" },
+        { property: "og:site_name", content: "Futbol y Porro FC" },
       ],
     };
   },
@@ -1031,7 +1031,7 @@ function MatchDetail() {
                 onClick={() =>
                   shareMatch({
                     id: match.id,
-                    title: `Picado ${match.formato}`,
+                    title: `F y P FC ${match.formato}`,
                     text: `${match.sede} · ${fechaDate.toLocaleString("es-AR")}`,
                   })
                 }

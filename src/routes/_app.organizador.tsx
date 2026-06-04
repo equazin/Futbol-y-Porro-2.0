@@ -499,7 +499,7 @@ _¡Nos vemos en la cancha!_ 🙌`;
       month: "long",
     });
 
-    const text = `📝 *LA CRÓNICA DEL PICADO* ⚽
+    const text = `📝 *LA CRÓNICA DE FUTBOL Y PORRO FC* ⚽
 -----------------------------------------
 📍 *Sede:* ${activeMatch.venue}
 🗓️ *Fecha:* ${dateStr}
