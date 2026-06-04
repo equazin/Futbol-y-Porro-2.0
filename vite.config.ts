@@ -13,5 +13,12 @@ export default defineConfig({
   },
   tanstackStart: {
     server: { entry: "server" },
+    // GitHub Pages can't run the SSR server, so emit a static SPA shell that
+    // mounts the app on the client. Prerender every route to real HTML.
+    spa: { enabled: true },
+    // Prerender only the known static routes; don't crawl dynamic links
+    // (e.g. /partidos/:id) which depend on the DB and 404 at build time.
+    // Those routes still render client-side via the SPA shell fallback.
+    prerender: { enabled: true, crawlLinks: false },
   },
 });

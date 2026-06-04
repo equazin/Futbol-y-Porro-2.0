@@ -73,6 +73,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+// Base URL del deploy (p. ej. "/Futbol-y-Porro-2.0/" en GitHub Pages, "/" en local).
+// Los assets estáticos viven bajo esta base, así que prefijamos las URLs absolutas.
+const BASE = import.meta.env.BASE_URL || "/";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -85,14 +89,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Futbol para siempre. Un club de amigos, cultivo propio y responsable." },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "Futbol y Porro FC" },
-      { property: "og:image", content: "/og-image.jpg" },
+      { property: "og:image", content: `${BASE}og-image.jpg` },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
-      { rel: "apple-touch-icon", href: "/icon-192.png" },
-      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", type: "image/svg+xml", href: `${BASE}favicon.svg` },
+      { rel: "apple-touch-icon", href: `${BASE}icon-192.png` },
+      { rel: "manifest", href: `${BASE}manifest.webmanifest` },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
