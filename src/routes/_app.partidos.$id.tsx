@@ -25,6 +25,7 @@ import { getMatchDetail, anotarse, bajarse, registrarVoto } from "@/lib/api/pica
 import { usePicadoPlayer } from "@/hooks/use-picado-player";
 import { PlayerAvatar } from "@/components/Avatar";
 import { useStore } from "@/store/match-store";
+import type { MatchResult } from "@/store/match-store";
 import type { MatchDetailData, SignupWithPlayer, VotoResult } from "@/types/picado";
 
 export const Route = createFileRoute("/_app/partidos/$id")({
@@ -94,6 +95,10 @@ function posLabel(pos: string | null) {
   return pos ? (map[pos] ?? pos.slice(0, 3).toUpperCase()) : "—";
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "error desconocido";
+}
+
 // ── DNI Dialog ────────────────────────────────────────────
 
 function DniDialog({
@@ -128,13 +133,16 @@ function DniDialog({
   const digitsOnly = dni.replace(/\D/g, "");
   const isValid = digitsOnly.length >= 7 && digitsOnly.length <= 9;
 
-  const modeLabel = mode === "anotarse" ? "Anotarme" : mode === "bajarse" ? "Bajarme" : "Identificarme para Votar";
-  const modeDesc = mode === "anotarse"
-    ? "Ingresá tu DNI para confirmar tu lugar."
-    : mode === "bajarse"
-    ? "Ingresá tu DNI para bajarte del partido."
-    : "Ingresá tu DNI para identificarte y votar MVP y Gol de la Fecha.";
-  const btnLabel = mode === "anotarse" ? "¡Anotarme!" : mode === "bajarse" ? "Confirmar baja" : "Continuar →";
+  const modeLabel =
+    mode === "anotarse" ? "Anotarme" : mode === "bajarse" ? "Bajarme" : "Identificarme para Votar";
+  const modeDesc =
+    mode === "anotarse"
+      ? "Ingresá tu DNI para confirmar tu lugar."
+      : mode === "bajarse"
+        ? "Ingresá tu DNI para bajarte del partido."
+        : "Ingresá tu DNI para identificarte y votar MVP y Gol de la Fecha.";
+  const btnLabel =
+    mode === "anotarse" ? "¡Anotarme!" : mode === "bajarse" ? "Confirmar baja" : "Continuar →";
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
@@ -150,12 +158,8 @@ function DniDialog({
           <X className="size-4" />
         </button>
 
-        <h2 className="font-display text-3xl uppercase mb-1">
-          {modeLabel}
-        </h2>
-        <p className="text-sm text-muted-foreground mb-5">
-          {modeDesc}
-        </p>
+        <h2 className="font-display text-3xl uppercase mb-1">{modeLabel}</h2>
+        <p className="text-sm text-muted-foreground mb-5">{modeDesc}</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
@@ -192,8 +196,8 @@ function DniDialog({
               mode === "anotarse"
                 ? "bg-lime text-lime-foreground hover:brightness-110 disabled:opacity-40"
                 : mode === "votar"
-                ? "bg-gold/90 text-black hover:bg-gold disabled:opacity-40"
-                : "bg-out/15 text-out border border-out/30 hover:bg-out/25 disabled:opacity-40",
+                  ? "bg-gold/90 text-black hover:bg-gold disabled:opacity-40"
+                  : "bg-out/15 text-out border border-out/30 hover:bg-out/25 disabled:opacity-40",
             )}
           >
             {loading ? "Un momento…" : btnLabel}
@@ -210,7 +214,7 @@ function MatchResultBanner({
   result,
   participants,
 }: {
-  result: any;
+  result: MatchResult | null | undefined;
   participants: SignupWithPlayer[];
 }) {
   if (!result || (result.scoreA === 0 && result.scoreB === 0 && !result.teamA?.length)) return null;
@@ -237,29 +241,45 @@ function MatchResultBanner({
       <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
         {/* Score bar */}
         <div className="grid grid-cols-3 items-center gap-0 text-center">
-          <div className={cn(
-            "p-4 flex flex-col items-center gap-1",
-            aWon ? "bg-lime/10" : "bg-secondary/30",
-          )}>
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Equipo A</span>
+          <div
+            className={cn(
+              "p-4 flex flex-col items-center gap-1",
+              aWon ? "bg-lime/10" : "bg-secondary/30",
+            )}
+          >
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
+              Equipo A
+            </span>
             {aWon && <Trophy className="size-3 text-gold" />}
           </div>
           <div className="py-5 px-4 bg-secondary/60 flex items-center justify-center gap-3">
-            <span className={cn(
-              "font-display text-5xl tabular-nums",
-              aWon ? "text-lime" : drew ? "text-foreground" : "text-muted-foreground",
-            )}>{scoreA}</span>
+            <span
+              className={cn(
+                "font-display text-5xl tabular-nums",
+                aWon ? "text-lime" : drew ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {scoreA}
+            </span>
             <span className="font-display text-2xl text-muted-foreground">—</span>
-            <span className={cn(
-              "font-display text-5xl tabular-nums",
-              bWon ? "text-lime" : drew ? "text-foreground" : "text-muted-foreground",
-            )}>{scoreB}</span>
+            <span
+              className={cn(
+                "font-display text-5xl tabular-nums",
+                bWon ? "text-lime" : drew ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {scoreB}
+            </span>
           </div>
-          <div className={cn(
-            "p-4 flex flex-col items-center gap-1",
-            bWon ? "bg-lime/10" : "bg-secondary/30",
-          )}>
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Equipo B</span>
+          <div
+            className={cn(
+              "p-4 flex flex-col items-center gap-1",
+              bWon ? "bg-lime/10" : "bg-secondary/30",
+            )}
+          >
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
+              Equipo B
+            </span>
             {bWon && <Trophy className="size-3 text-gold" />}
           </div>
         </div>
@@ -275,12 +295,16 @@ function MatchResultBanner({
           <div className="grid grid-cols-2 divide-x divide-border/40 border-t border-border/40">
             <div className="p-3 space-y-1">
               {teamA.map((id) => (
-                <div key={id} className="text-xs text-muted-foreground">{getName(id)}</div>
+                <div key={id} className="text-xs text-muted-foreground">
+                  {getName(id)}
+                </div>
               ))}
             </div>
             <div className="p-3 space-y-1">
               {teamB.map((id) => (
-                <div key={id} className="text-xs text-muted-foreground">{getName(id)}</div>
+                <div key={id} className="text-xs text-muted-foreground">
+                  {getName(id)}
+                </div>
               ))}
             </div>
           </div>
@@ -300,7 +324,7 @@ function VotingSection({
 }: {
   matchId: string;
   participants: SignupWithPlayer[];
-  result: any;
+  result: MatchResult | null | undefined;
   isClosed: boolean;
 }) {
   const { stored, remember } = usePicadoPlayer();
@@ -309,14 +333,13 @@ function VotingSection({
   const playerMap = Object.fromEntries(players.map((p) => [p.id, p]));
 
   const [step, setStep] = useState<"auth" | "vote" | "done">("auth");
-  const [showDniDialog, setShowDniDialog] = useState(false);
   const [mvpVote, setMvpVote] = useState<string>("");
   const [golVote, setGolVote] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   // Check if the user already voted (voter_id in result.votes)
-  const votes: any[] = result?.votes ?? [];
-  const myVote = stored ? votes.find((v: any) => v.voter_id === stored.player_id) : null;
+  const votes = result?.votes ?? [];
+  const myVote = stored ? votes.find((v) => v.voter_id === stored.player_id) : null;
   const hasVoted = !!myVote;
 
   // Check who won (for closed matches)
@@ -345,44 +368,7 @@ function VotingSection({
   }
 
   // Check if the current user participated
-  const isParticipant = stored
-    ? participants.some((s) => s.player_id === stored.player_id)
-    : false;
-
-  async function handleDniAuth(dni: string) {
-    // Try identifying by trying to submit a vote — if they're not a participant the backend will reject
-    // For now, just look them up by what the server returns after a minimal vote attempt
-    // We actually need them to select their votes first, so just set the step
-    setShowDniDialog(false);
-    if (myVote) {
-      // Already voted; pre-fill
-      setMvpVote(myVote.mvp_vote);
-      setGolVote(myVote.gol_vote);
-    }
-    setStep("vote");
-  }
-
-  async function handleSubmitVote() {
-    if (!stored || !mvpVote || !golVote) {
-      toast.error("Seleccioná tanto el MVP como el Gol de la Fecha antes de votar.");
-      return;
-    }
-    setLoading(true);
-    try {
-      // We call the RPC via server fn, passing the stored player info for auth
-      // Since we need DNI for the RPC but we only have player_id stored, 
-      // we use a simpler client-side approach: store the vote locally and show DNI dialog
-      setStep("done");
-      toast.success("¡Voto registrado!", {
-        description: `MVP: ${getName(mvpVote)} · Gol: ${getName(golVote)}`,
-      });
-      await router.invalidate();
-    } catch (err: any) {
-      toast.error("Error al votar: " + (err.message || "error desconocido"));
-    } finally {
-      setLoading(false);
-    }
-  }
+  const isParticipant = stored ? participants.some((s) => s.player_id === stored.player_id) : false;
 
   // If match is closed, show winners prominently
   if (isClosed) {
@@ -396,14 +382,20 @@ function VotingSection({
           <div className="rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/20 via-gold/5 to-transparent p-5 flex items-center gap-4">
             <span className="text-4xl select-none">👑</span>
             <div>
-              <div className="text-[10px] uppercase tracking-widest font-bold text-gold mb-1">MVP del Partido</div>
+              <div className="text-[10px] uppercase tracking-widest font-bold text-gold mb-1">
+                MVP del Partido
+              </div>
               {mvpWinnerId ? (
-                <div className="font-display text-2xl uppercase text-foreground">{getName(mvpWinnerId)}</div>
+                <div className="font-display text-2xl uppercase text-foreground">
+                  {getName(mvpWinnerId)}
+                </div>
               ) : (
                 <div className="text-muted-foreground text-sm">Sin votos suficientes</div>
               )}
               {mvpWinnerId && (
-                <div className="text-xs text-muted-foreground mt-1">{topMvpEntry?.[1] ?? 0} voto{(topMvpEntry?.[1] ?? 0) !== 1 ? "s" : ""}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {topMvpEntry?.[1] ?? 0} voto{(topMvpEntry?.[1] ?? 0) !== 1 ? "s" : ""}
+                </div>
               )}
             </div>
           </div>
@@ -412,14 +404,20 @@ function VotingSection({
           <div className="rounded-2xl border border-lime/40 bg-gradient-to-br from-lime/15 via-lime/5 to-transparent p-5 flex items-center gap-4">
             <span className="text-4xl select-none">⚽</span>
             <div>
-              <div className="text-[10px] uppercase tracking-widest font-bold text-lime mb-1">Gol de la Fecha</div>
+              <div className="text-[10px] uppercase tracking-widest font-bold text-lime mb-1">
+                Gol de la Fecha
+              </div>
               {golWinnerId ? (
-                <div className="font-display text-2xl uppercase text-foreground">{getName(golWinnerId)}</div>
+                <div className="font-display text-2xl uppercase text-foreground">
+                  {getName(golWinnerId)}
+                </div>
               ) : (
                 <div className="text-muted-foreground text-sm">Sin votos suficientes</div>
               )}
               {golWinnerId && (
-                <div className="text-xs text-muted-foreground mt-1">{topGolEntry?.[1] ?? 0} voto{(topGolEntry?.[1] ?? 0) !== 1 ? "s" : ""}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {topGolEntry?.[1] ?? 0} voto{(topGolEntry?.[1] ?? 0) !== 1 ? "s" : ""}
+                </div>
               )}
             </div>
           </div>
@@ -440,9 +438,7 @@ function VotingSection({
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75" />
           <span className="relative inline-flex rounded-full size-2 bg-gold" />
         </span>
-        <h2 className="font-display text-3xl uppercase tracking-wider">
-          Votación en Curso
-        </h2>
+        <h2 className="font-display text-3xl uppercase tracking-wider">Votación en Curso</h2>
         <span className="ml-auto text-xs text-muted-foreground">
           {votes.length} voto{votes.length !== 1 ? "s" : ""}
         </span>
@@ -459,7 +455,10 @@ function VotingSection({
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {votedParticipants.map((s) => (
-                  <span key={s.player_id} className="rounded-full bg-lime/10 px-2 py-1 text-[11px] text-lime">
+                  <span
+                    key={s.player_id}
+                    className="rounded-full bg-lime/10 px-2 py-1 text-[11px] text-lime"
+                  >
                     {displayName(s.players)}
                   </span>
                 ))}
@@ -476,7 +475,10 @@ function VotingSection({
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {missingParticipants.map((s) => (
-                  <span key={s.player_id} className="rounded-full bg-secondary px-2 py-1 text-[11px] text-muted-foreground">
+                  <span
+                    key={s.player_id}
+                    className="rounded-full bg-secondary px-2 py-1 text-[11px] text-muted-foreground"
+                  >
                     {displayName(s.players)}
                   </span>
                 ))}
@@ -498,7 +500,10 @@ function VotingSection({
             {stored && isParticipant ? (
               <button
                 onClick={() => {
-                  if (myVote) { setMvpVote(myVote.mvp_vote); setGolVote(myVote.gol_vote); }
+                  if (myVote) {
+                    setMvpVote(myVote.mvp_vote);
+                    setGolVote(myVote.gol_vote);
+                  }
                   setStep("vote");
                 }}
                 className="inline-flex items-center gap-2 rounded-xl bg-gold/90 text-black px-5 py-2.5 text-sm font-bold hover:bg-gold transition"
@@ -506,12 +511,9 @@ function VotingSection({
                 {hasVoted ? "✏️ Cambiar Voto" : "🗳️ Votar Ahora"}
               </button>
             ) : (
-              <button
-                onClick={() => setShowDniDialog(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-gold/90 text-black px-5 py-2.5 text-sm font-bold hover:bg-gold transition"
-              >
-                🗳️ Identificarme y Votar
-              </button>
+              <div className="rounded-xl border border-border/50 bg-secondary/30 px-4 py-3 text-xs text-muted-foreground">
+                Tu usuario verificado no figura como titular en este partido.
+              </div>
             )}
           </div>
         ) : step === "vote" ? (
@@ -545,15 +547,6 @@ function VotingSection({
           </div>
         )}
       </div>
-
-      {showDniDialog && (
-        <DniDialog
-          open={showDniDialog}
-          mode="votar"
-          onClose={() => setShowDniDialog(false)}
-          onConfirm={handleDniAuth}
-        />
-      )}
     </section>
   );
 }
@@ -584,7 +577,7 @@ function VoteForm({
   loading: boolean;
   setLoading: (v: boolean) => void;
   onSuccess: (res: VotoResult) => void;
-  result: any;
+  result: MatchResult | null | undefined;
   voterPlayerId: string | null;
 }) {
   const [dniForVote, setDniForVote] = useState("");
@@ -597,11 +590,7 @@ function VoteForm({
   const teamA: string[] = result?.teamA ?? [];
   const teamB: string[] = result?.teamB ?? [];
   const isDraw = scoreA === scoreB;
-  const winnerTeamIds: string[] = scoreA > scoreB
-    ? teamA
-    : scoreB > scoreA
-      ? teamB
-      : [];
+  const winnerTeamIds: string[] = scoreA > scoreB ? teamA : scoreB > scoreA ? teamB : [];
 
   const mvpCandidates = participants.filter((s) => {
     if (s.player_id === voterPlayerId) return false; // no self-vote
@@ -638,8 +627,8 @@ function VoteForm({
       }
       toast.success("\u00a1Voto registrado!", { description: res.message });
       onSuccess(res);
-    } catch (err: any) {
-      toast.error("Error al votar: " + (err.message || "error desconocido"));
+    } catch (err) {
+      toast.error("Error al votar: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -658,7 +647,10 @@ function VoteForm({
       {!isDraw && winnerTeamIds.length > 0 && (
         <div className="flex items-center gap-2 rounded-xl bg-gold/10 border border-gold/20 px-3 py-2 text-xs text-gold">
           <Trophy className="size-3.5 shrink-0" />
-          <span>El MVP solo puede ser del <strong>equipo ganador</strong>. Para Gol de la Fecha, cualquier jugador.</span>
+          <span>
+            El MVP solo puede ser del <strong>equipo ganador</strong>. Para Gol de la Fecha,
+            cualquier jugador.
+          </span>
         </div>
       )}
       {isDraw && (
@@ -675,7 +667,9 @@ function VoteForm({
             <span className="text-lg">👑</span>
             <h3 className="text-sm font-bold uppercase tracking-wider">MVP del Partido</h3>
           </div>
-          {!isDraw && <span className="text-[10px] uppercase text-gold font-bold">Solo equipo ganador</span>}
+          {!isDraw && (
+            <span className="text-[10px] uppercase text-gold font-bold">Solo equipo ganador</span>
+          )}
         </div>
         {mvpCandidates.length === 0 ? (
           <p className="text-xs text-muted-foreground px-1">No hay candidatos disponibles.</p>
@@ -692,8 +686,12 @@ function VoteForm({
                     : "border-border/50 bg-card/40 text-muted-foreground hover:border-gold/40 hover:bg-gold/5",
                 )}
               >
-                <span className={cn("size-4 flex items-center justify-center shrink-0 text-sm",
-                  posColors[s.players.posicion ?? ""] ?? "")}>
+                <span
+                  className={cn(
+                    "size-4 flex items-center justify-center shrink-0 text-sm",
+                    posColors[s.players.posicion ?? ""] ?? "",
+                  )}
+                >
                   {mvpVote === s.player_id ? "👑" : "○"}
                 </span>
                 <span className="truncate">{displayName(s.players)}</span>
@@ -735,7 +733,9 @@ function VoteForm({
       {/* DNI Confirmation step */}
       {showDniInput && (
         <div className="space-y-2 animate-fade-in">
-          <p className="text-xs text-muted-foreground">Confirm\u00e1 tu identidad con tu DNI para registrar el voto:</p>
+          <p className="text-xs text-muted-foreground">
+            Confirm\u00e1 tu identidad con tu DNI para registrar el voto:
+          </p>
           <input
             type="tel"
             inputMode="numeric"
@@ -761,7 +761,11 @@ function VoteForm({
           disabled={loading || !mvpVote || !golVote}
           className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gold/90 text-black px-4 py-2.5 text-sm font-bold hover:bg-gold disabled:opacity-40 transition"
         >
-          {loading ? "Registrando\u2026" : showDniInput ? "\u2713 Confirmar Voto" : "\uD83D\uDDF3\uFE0F Registrar Voto"}
+          {loading
+            ? "Registrando\u2026"
+            : showDniInput
+              ? "\u2713 Confirmar Voto"
+              : "\uD83D\uDDF3\uFE0F Registrar Voto"}
         </button>
       </div>
     </div>
@@ -875,8 +879,8 @@ function MatchDetail() {
 
       setDialog(null);
       await router.invalidate();
-    } catch (err: any) {
-      toast.error("Error al anotarse: " + (err.message || "error desconocido"));
+    } catch (err) {
+      toast.error("Error al anotarse: " + errorMessage(err));
     }
   }
 
@@ -892,8 +896,8 @@ function MatchDetail() {
       toast.info("Te bajaste del partido.");
       setDialog(null);
       await router.invalidate();
-    } catch (err: any) {
-      toast.error("Error al bajarse: " + (err.message || "error desconocido"));
+    } catch (err) {
+      toast.error("Error al bajarse: " + errorMessage(err));
     }
   }
 
@@ -970,8 +974,7 @@ function MatchDetail() {
               <div className="mt-2 text-sm text-muted-foreground">
                 {remaining > 0 ? (
                   <>
-                    Faltan{" "}
-                    <strong className="text-foreground tabular-nums">{remaining}</strong>{" "}
+                    Faltan <strong className="text-foreground tabular-nums">{remaining}</strong>{" "}
                     jugadores
                   </>
                 ) : (
@@ -1047,7 +1050,8 @@ function MatchDetail() {
             <div className="px-6 pb-6">
               <div className="rounded-xl bg-secondary/60 px-4 py-3 text-sm text-muted-foreground text-center">
                 {match.estado === "programado" && "La inscripción aún no está abierta"}
-                {match.estado === "jugado" && "Partido finalizado — votación de MVP y Gol de la Fecha abierta"}
+                {match.estado === "jugado" &&
+                  "Partido finalizado — votación de MVP y Gol de la Fecha abierta"}
                 {match.estado === "cerrado" && "Partido cerrado — los ganadores fueron asignados"}
                 {match.estado === "cancelado" && "Partido cancelado"}
               </div>
@@ -1067,7 +1071,6 @@ function MatchDetail() {
             participants={allParticipants}
             result={result}
             isClosed={isCerrado}
-            voterPlayerId={stored?.player_id ?? null}
           />
         )}
 
@@ -1104,9 +1107,7 @@ function MatchDetail() {
             <div className="flex items-center gap-2 mb-3">
               <span className="size-2.5 rounded-full bg-waitlist" />
               <h2 className="font-display text-2xl uppercase">Lista de espera</h2>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                ({espera.length})
-              </span>
+              <span className="text-xs text-muted-foreground tabular-nums">({espera.length})</span>
               {isOpen && <LiveDot />}
             </div>
             {espera.length === 0 ? (

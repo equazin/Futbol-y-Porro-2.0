@@ -1,5 +1,11 @@
 import { supabase } from "../supabase";
-import type { MatchDetailData, PicadoMatch, AnotarseResult, VotoResult } from "@/types/picado";
+import type {
+  MatchDetailData,
+  PicadoMatch,
+  AnotarseResult,
+  VotoResult,
+  IdentificarJugadorResult,
+} from "@/types/picado";
 
 const slug = () => import.meta.env.VITE_GROUP_SLUG || "fyp-fc";
 
@@ -20,7 +26,9 @@ export type JugadorRow = {
 export const getJugadores = async (): Promise<JugadorRow[]> => {
   const { data, error } = await supabase
     .from("players")
-    .select("id, nombre, apodo, posicion, elo, foto_url, tipo, match_players(goles, presente, matches(estado))")
+    .select(
+      "id, nombre, apodo, posicion, elo, foto_url, tipo, match_players(goles, presente, matches(estado))",
+    )
     .eq("activo", true)
     .order("elo", { ascending: false });
 
@@ -48,7 +56,11 @@ export const getJugadores = async (): Promise<JugadorRow[]> => {
 };
 
 // ── Fetch: detalle de partido con inscripciones ───────────
-export const getMatchDetail = async ({ data }: { data: { id: string } }): Promise<MatchDetailData | null> => {
+export const getMatchDetail = async ({
+  data,
+}: {
+  data: { id: string };
+}): Promise<MatchDetailData | null> => {
   const { data: match, error: matchError } = await supabase
     .from("picado_matches")
     .select("*")
@@ -86,7 +98,11 @@ export const getMatchDetail = async ({ data }: { data: { id: string } }): Promis
 };
 
 // ── Mutation: anotarse via DNI ────────────────────────────
-export const anotarse = async ({ data }: { data: { dni: string; match_id: string } }): Promise<AnotarseResult> => {
+export const anotarse = async ({
+  data,
+}: {
+  data: { dni: string; match_id: string };
+}): Promise<AnotarseResult> => {
   const { data: result, error } = await supabase.rpc("anotarse", {
     p_dni: data.dni.trim(),
     p_match_id: data.match_id,
@@ -96,7 +112,11 @@ export const anotarse = async ({ data }: { data: { dni: string; match_id: string
 };
 
 // ── Mutation: bajarse via DNI ─────────────────────────────
-export const bajarse = async ({ data }: { data: { dni: string; match_id: string } }): Promise<AnotarseResult> => {
+export const bajarse = async ({
+  data,
+}: {
+  data: { dni: string; match_id: string };
+}): Promise<AnotarseResult> => {
   const { data: result, error } = await supabase.rpc("bajarse", {
     p_dni: data.dni.trim(),
     p_match_id: data.match_id,
@@ -106,7 +126,21 @@ export const bajarse = async ({ data }: { data: { dni: string; match_id: string 
 };
 
 // ── Mutation: votar MVP y Gol de la Fecha via DNI ─────────
-export const registrarVoto = async ({ data }: {
+export const identificarJugador = async ({
+  data,
+}: {
+  data: { dni: string };
+}): Promise<IdentificarJugadorResult> => {
+  const { data: result, error } = await supabase.rpc("picado_identificar_jugador", {
+    p_dni: data.dni.trim(),
+  });
+  if (error) throw new Error(error.message);
+  return result as IdentificarJugadorResult;
+};
+
+export const registrarVoto = async ({
+  data,
+}: {
   data: { dni: string; match_id: string; mvp_vote: string; gol_vote: string };
 }): Promise<VotoResult> => {
   const { data: result, error } = await supabase.rpc("registrar_voto", {
@@ -120,8 +154,17 @@ export const registrarVoto = async ({ data }: {
 };
 
 // ── Admin Mutation: crear partido ────────────────────────
-export const adminCreateMatch = async ({ data }: {
-  data: { fecha: string; hora: string; sede: string; formato: string; cupo_max: number; estado: string };
+export const adminCreateMatch = async ({
+  data,
+}: {
+  data: {
+    fecha: string;
+    hora: string;
+    sede: string;
+    formato: string;
+    cupo_max: number;
+    estado: string;
+  };
 }) => {
   const { data: group } = await supabase
     .from("picado_groups")
@@ -150,7 +193,9 @@ export const adminCreateMatch = async ({ data }: {
 };
 
 // ── Admin Mutation: actualizar partido ────────────────────
-export const adminUpdateMatch = async ({ data }: {
+export const adminUpdateMatch = async ({
+  data,
+}: {
   data: {
     id: string;
     patch: {
@@ -177,17 +222,16 @@ export const adminUpdateMatch = async ({ data }: {
 
 // ── Admin Mutation: eliminar partido ──────────────────────
 export const adminDeleteMatch = async ({ data }: { data: { id: string } }) => {
-  const { error } = await supabase
-    .from("picado_matches")
-    .delete()
-    .eq("id", data.id);
+  const { error } = await supabase.from("picado_matches").delete().eq("id", data.id);
 
   if (error) throw new Error(error.message);
   return { ok: true };
 };
 
 // ── Admin Mutation: inscribir jugador manualmente ─────────
-export const adminAddSignup = async ({ data }: {
+export const adminAddSignup = async ({
+  data,
+}: {
   data: { match_id: string; player_id: string; estado: "titular" | "espera" };
 }) => {
   const { data: signups } = await supabase
@@ -212,7 +256,11 @@ export const adminAddSignup = async ({ data }: {
 };
 
 // ── Admin Mutation: remover inscripción manualmente ───────
-export const adminRemoveSignup = async ({ data }: { data: { match_id: string; player_id: string } }) => {
+export const adminRemoveSignup = async ({
+  data,
+}: {
+  data: { match_id: string; player_id: string };
+}) => {
   const { error } = await supabase
     .from("picado_signups")
     .delete()
@@ -224,8 +272,17 @@ export const adminRemoveSignup = async ({ data }: { data: { match_id: string; pl
 };
 
 // ── Admin Mutation: crear jugador en el plantel ───────────
-export const adminCreatePlayer = async ({ data }: {
-  data: { nombre: string; apodo: string | null; posicion: string | null; elo: number; foto_url: string | null; dni?: string | null };
+export const adminCreatePlayer = async ({
+  data,
+}: {
+  data: {
+    nombre: string;
+    apodo: string | null;
+    posicion: string | null;
+    elo: number;
+    foto_url: string | null;
+    dni?: string | null;
+  };
 }) => {
   const { data: player, error } = await supabase.rpc("picado_admin_create_player", {
     p_nombre: data.nombre,
@@ -241,7 +298,9 @@ export const adminCreatePlayer = async ({ data }: {
 };
 
 // ── Admin Mutation: actualizar jugador ────────────────────
-export const adminUpdatePlayer = async ({ data }: {
+export const adminUpdatePlayer = async ({
+  data,
+}: {
   data: {
     id: string;
     patch: {
@@ -333,7 +392,12 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
       capacity: m.cupo_max,
       confirmed,
       waitlist,
-      status: m.estado === "programado" ? "closed" : m.estado === "cerrado" || m.estado === "jugado" ? "closed" : "open",
+      status:
+        m.estado === "programado"
+          ? "closed"
+          : m.estado === "cerrado" || m.estado === "jugado"
+            ? "closed"
+            : "open",
       closesAt: m.inscripcion_cierra || `${m.fecha}T${m.hora}`,
       result,
       played,

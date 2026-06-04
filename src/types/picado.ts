@@ -53,8 +53,8 @@ export type SignupWithPlayer = PicadoSignup & {
 
 export type MatchVote = {
   voter_id: string;
-  mvp_vote: string;  // player_id
-  gol_vote: string;  // player_id
+  mvp_vote: string; // player_id
+  gol_vote: string; // player_id
 };
 
 export type VoteResult = {
@@ -65,10 +65,10 @@ export type VoteResult = {
 
 export type MatchVotesSummary = {
   votes: MatchVote[];
-  mvpWinner?: VoteResult;    // computed from votes, set on close
-  golWinner?: VoteResult;    // computed from votes, set on close
-  mvpResult?: string;        // player_id of confirmed winner
-  golResult?: string;        // player_id of confirmed winner
+  mvpWinner?: VoteResult; // computed from votes, set on close
+  golWinner?: VoteResult; // computed from votes, set on close
+  mvpResult?: string; // player_id of confirmed winner
+  golResult?: string; // player_id of confirmed winner
 };
 
 // ── Match Detail ────────────────────────────────────────────
@@ -96,8 +96,23 @@ export type VotoResult = {
   nombre?: string;
 };
 
+export type IdentificarJugadorResult = {
+  ok: boolean;
+  message: string;
+  player_id?: string;
+  nombre?: string;
+  apodo?: string | null;
+  posicion?: ExistingPlayer["posicion"];
+  foto_url?: string | null;
+  elo?: number;
+};
+
 // Stored in localStorage — only player_id and name, NEVER the DNI
 export type StoredPlayer = {
   player_id: string;
   nombre: string;
+  apodo?: string | null;
+  posicion?: ExistingPlayer["posicion"];
+  foto_url?: string | null;
+  elo?: number;
 };
