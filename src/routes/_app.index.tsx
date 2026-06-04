@@ -36,14 +36,15 @@ function Home() {
 
         <div className="relative px-6 md:px-10 py-8 md:py-12">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-lime/40 bg-lime/10 px-3 py-1 text-xs font-semibold text-lime">
-            <Zap className="size-3 text-lime animate-pulse" /> Próximo picado en vivo
+            <Zap className="size-3 text-lime animate-pulse" /> Domingos de Futbol y Porro
           </span>
           <h1 className="mt-4 font-display text-5xl md:text-7xl leading-[0.95] uppercase max-w-2xl">
-            Organizá tu picado <span className="text-lime">sin quilombo</span>
+            Futbol para siempre <span className="text-lime">un club de amigos</span>
           </h1>
           <p className="mt-4 max-w-lg text-sm md:text-base text-muted-foreground leading-relaxed">
-            Publicás el partido, los pibes se anotan con un toque y todos ven en vivo cuántos faltan. Chau Excel, chau cadena de WhatsApp.
+            Cultivo propio y responsable. Anotate al próximo partido, mirá quién juega y seguí el ranking del grupo.
           </p>
+          <p className="mt-2 text-xs text-muted-foreground/50 italic">Un club, una familia, un porro 🌿</p>
 
           <div className="mt-8 grid gap-6 md:grid-cols-[1.5fr_1fr] max-w-4xl">
             {/* Ticket de Entrada Digital */}
@@ -148,7 +149,7 @@ function Home() {
               <div className="col-span-full rounded-[28px] border border-border/40 bg-card/45 backdrop-blur p-8 text-center text-muted-foreground flex flex-col items-center justify-center space-y-3">
                 <MapPin className="size-10 text-muted-foreground/45" />
                 <h3 className="font-display text-xl uppercase text-foreground">No hay partidos programados</h3>
-                <p className="text-xs text-muted-foreground max-w-sm">No hay picados abiertos para inscripción en este momento. Volvé más tarde.</p>
+                <p className="text-xs text-muted-foreground max-w-sm">No hay partidos abiertos para inscripción en este momento. Volvé más tarde.</p>
               </div>
             )}
 
@@ -178,7 +179,7 @@ function Home() {
 
       {/* Stats Bento Grid */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Stat label="Picados jugados" value={String(playedMatchesCount)} icon="⚽" color="border-lime/20 hover:border-lime/50 hover:shadow-neon-glow" />
+        <Stat label="Partidos jugados" value={String(playedMatchesCount)} icon="⚽" color="border-lime/20 hover:border-lime/50 hover:shadow-neon-glow" />
         <Stat label="Jugadores activos" value={String(activePlayersCount)} icon="👥" color="border-blue-500/20 hover:border-blue-500/50 hover:shadow-[0_0_15px_-3px_rgba(59,130,246,0.2)]" />
         <Stat label="Goles esta temporada" value={String(totalGoals)} icon="🔥" color="border-gold/20 hover:border-gold/50 hover:shadow-gold-glow" />
       </section>
@@ -187,7 +188,7 @@ function Home() {
       {matches.filter((m) => m.status === "open").length > 0 && (
         <section>
           <div className="flex items-end justify-between mb-4">
-            <h2 className="font-display text-3xl uppercase tracking-wider">Próximos picados</h2>
+            <h2 className="font-display text-3xl uppercase tracking-wider">Próximos partidos</h2>
             <Link to="/partidos" className="text-xs font-semibold text-lime hover:underline uppercase">Ver todos →</Link>
           </div>
           <div className="grid gap-4 md:grid-cols-3">

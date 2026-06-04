@@ -20,7 +20,7 @@ export function Logo({ className, showWord = true }: { className?: string; showW
       </svg>
       {showWord && (
         <span className="font-display text-2xl leading-none tracking-wide">
-          PICADO<span className="text-lime">.</span>
+          F Y P<span className="text-lime"> FC</span>
         </span>
       )}
     </div>
