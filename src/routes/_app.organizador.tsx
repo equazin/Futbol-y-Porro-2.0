@@ -445,7 +445,7 @@ function OrganizadorPanel() {
 
     const text = `⚽ *EQUIPOS DEL PICADO* ⚽
 📍 *Sede:* ${activeMatch.venue}
-🗓️ *Fecha:* ${dateStr} a las ${activeMatch.hora.slice(0, 5)} hs
+🗓️ *Fecha:* ${dateStr} a las ${(activeMatch.hora ?? "").slice(0, 5)} hs
 👥 *Formato:* ${activeMatch.format}
 
 🟢 *EQUIPO A* (${teamAPlayers.length} jugadores)
@@ -503,7 +503,7 @@ _¡Nos vemos en la cancha!_ 🙌`;
 -----------------------------------------
 📍 *Sede:* ${activeMatch.venue}
 🗓️ *Fecha:* ${dateStr}
-⏰ *Hora:* ${activeMatch.hora.slice(0, 5)} hs
+⏰ *Hora:* ${(activeMatch.hora ?? "").slice(0, 5)} hs
 👥 *Formato:* ${activeMatch.format}
 
 💥 *RESULTADO FINAL* 💥
@@ -800,7 +800,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                     </h2>
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
                       <Calendar className="size-3.5" />
-                      {getFormatDate(activeMatch.date)} a las {activeMatch.hora.slice(0,5)} hs
+                      {getFormatDate(activeMatch.date)} a las {(activeMatch.hora ?? "").slice(0,5)} hs
                     </p>
                   </div>
 
