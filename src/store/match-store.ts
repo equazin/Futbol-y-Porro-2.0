@@ -617,7 +617,17 @@ export const useStore = create<State & Actions>()(
         });
       },
     }),
-    { name: "picado-store-v3" }, // Bumped store name to prevent local cache conflicts
+    {
+      name: "picado-store-v3", // Bumped store name to prevent local cache conflicts
+      // Solo persistimos la sesión de admin. matches/players/rules son datos
+      // del servidor: deben venir siempre frescos de Supabase vía
+      // loadFromDatabase(), nunca del localStorage de cada navegador (eso
+      // mostraba datos viejos como si los cambios no se hubieran hecho).
+      partialize: (state) => ({
+        isAdmin: state.isAdmin,
+        adminRole: state.adminRole,
+      }),
+    },
   ),
 );
 
