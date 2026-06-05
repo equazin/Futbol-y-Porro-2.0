@@ -253,6 +253,29 @@ function MatchResultBanner({
     return s ? displayName(s.players) : "?";
   }
 
+  const stats = result.stats ?? {};
+  const mvpId = result.mvpResult;
+  const golId = result.golResult;
+
+  // Líneas de jugador con badges de goles/asistencias
+  const renderTeam = (ids: string[]) =>
+    ids.map((id) => {
+      const s = stats[id];
+      const goals = s?.goals ?? 0;
+      const assists = s?.assists ?? 0;
+      return (
+        <div key={id} className="flex items-center justify-between gap-2 text-xs">
+          <span className={cn("truncate", id === mvpId ? "text-gold font-semibold" : "text-muted-foreground")}>
+            {getName(id)}
+          </span>
+          <span className="flex items-center gap-1.5 shrink-0 text-[11px] tabular-nums">
+            {goals > 0 && <span title="Goles">⚽{goals > 1 ? `×${goals}` : ""}</span>}
+            {assists > 0 && <span title="Asistencias" className="text-muted-foreground">🎯{assists > 1 ? `×${assists}` : ""}</span>}
+          </span>
+        </div>
+      );
+    });
+
   return (
     <section className="mt-6">
       <h2 className="font-display text-2xl uppercase mb-3 flex items-center gap-2">
@@ -310,23 +333,33 @@ function MatchResultBanner({
           </div>
         )}
 
-        {/* Teams */}
+        {/* MVP y Gol de la Fecha */}
+        {(mvpId || golId) && (
+          <div className="grid grid-cols-2 divide-x divide-border/40 border-t border-border/40">
+            <div className="p-3 text-center">
+              <div className="text-[9px] uppercase tracking-widest font-bold text-gold mb-0.5">
+                👑 MVP
+              </div>
+              <div className="text-sm font-semibold truncate">
+                {mvpId ? getName(mvpId) : "—"}
+              </div>
+            </div>
+            <div className="p-3 text-center">
+              <div className="text-[9px] uppercase tracking-widest font-bold text-lime mb-0.5">
+                ⚽ Gol de la Fecha
+              </div>
+              <div className="text-sm font-semibold truncate">
+                {golId ? getName(golId) : "—"}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Teams con goles/asistencias */}
         {(teamA.length > 0 || teamB.length > 0) && (
           <div className="grid grid-cols-2 divide-x divide-border/40 border-t border-border/40">
-            <div className="p-3 space-y-1">
-              {teamA.map((id) => (
-                <div key={id} className="text-xs text-muted-foreground">
-                  {getName(id)}
-                </div>
-              ))}
-            </div>
-            <div className="p-3 space-y-1">
-              {teamB.map((id) => (
-                <div key={id} className="text-xs text-muted-foreground">
-                  {getName(id)}
-                </div>
-              ))}
-            </div>
+            <div className="p-3 space-y-1.5">{renderTeam(teamA)}</div>
+            <div className="p-3 space-y-1.5">{renderTeam(teamB)}</div>
           </div>
         )}
       </div>
