@@ -8,8 +8,19 @@ export const Route = createFileRoute("/_app/partidos/")({
 
 function PartidosList() {
   const { matches } = useStore();
-  const open = matches.filter((m) => m.status === "open");
-  const past = matches.filter((m) => m.status !== "open");
+
+  // Separamos por FECHA, no por estado: un partido futuro todavía
+  // "programado" (inscripción sin abrir) sigue siendo un próximo partido.
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const ts = (m: (typeof matches)[number]) => new Date(m.date).getTime();
+
+  const upcoming = matches
+    .filter((m) => ts(m) >= startOfToday.getTime())
+    .sort((a, b) => ts(a) - ts(b));
+  const past = matches
+    .filter((m) => ts(m) < startOfToday.getTime())
+    .sort((a, b) => ts(b) - ts(a));
 
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-6 py-6">
@@ -19,9 +30,13 @@ function PartidosList() {
       </header>
 
       <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Próximos</h2>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {open.map((m) => <MatchCard key={m.id} match={m} />)}
-      </div>
+      {upcoming.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No hay partidos próximos.</p>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {upcoming.map((m) => <MatchCard key={m.id} match={m} />)}
+        </div>
+      )}
 
       {past.length > 0 && (
         <>

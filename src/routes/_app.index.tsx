@@ -45,7 +45,19 @@ function Home() {
   const playerMap = useMemo(() => Object.fromEntries(players.map((p) => [p.id, p])), [players]);
   const playerById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
   const ranking = useMemo(() => computeRanking(matches, rules, players), [matches, rules, players]);
-  const next = matches.find((m) => m.status === "open") || matches[0];
+
+  // Próximos partidos por FECHA (incluye los "programado" cuya inscripción
+  // todavía no abrió), ordenados del más cercano al más lejano.
+  const upcomingByDate = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return matches
+      .filter((m) => new Date(m.date).getTime() >= startOfToday.getTime())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [matches]);
+
+  // Partido destacado: el que tiene inscripción abierta, o el próximo por fecha.
+  const next = upcomingByDate.find((m) => m.status === "open") || upcomingByDate[0] || matches[0];
   const remaining = next ? next.capacity - next.confirmed.length : 0;
   const pct = next ? Math.min(100, (next.confirmed.length / next.capacity) * 100) : 0;
   const topThree = ranking.slice(0, 3);
@@ -306,7 +318,7 @@ function Home() {
         />
       </section>
 
-      {matches.filter((m) => m.status === "open").length > 0 && (
+      {upcomingByDate.length > 0 && (
         <section>
           <div className="flex items-end justify-between mb-4">
             <h2 className="font-display text-3xl uppercase tracking-wider">Próximos partidos</h2>
@@ -318,11 +330,9 @@ function Home() {
             </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            {matches
-              .filter((m) => m.status === "open")
-              .map((m) => (
-                <MiniMatch key={m.id} match={m} />
-              ))}
+            {upcomingByDate.map((m) => (
+              <MiniMatch key={m.id} match={m} />
+            ))}
           </div>
         </section>
       )}
