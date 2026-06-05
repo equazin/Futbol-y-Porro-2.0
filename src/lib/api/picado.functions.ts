@@ -6,6 +6,7 @@ import type {
   VotoResult,
   IdentificarJugadorResult,
   PicadoAdminRole,
+  PicadoRecurrence,
 } from "@/types/picado";
 
 const slug = () => import.meta.env.VITE_GROUP_SLUG || "fyp-fc";
@@ -450,4 +451,50 @@ export const saveScoringRules = async ({ data }: {
     p_rules: data.rules,
   });
   if (error) throw new Error(error.message);
+};
+
+// ── Recurrencias: listado admin (incluye inactivas) ───────
+export const getRecurrences = async ({ data }: { data: { slug: string } }): Promise<PicadoRecurrence[]> => {
+  const { data: rows, error } = await supabase.rpc("picado_admin_list_recurrences", {
+    p_slug: data.slug,
+  });
+  if (error) throw new Error(error.message);
+  return (rows ?? []) as PicadoRecurrence[];
+};
+
+// ── Admin Mutation: crear/actualizar regla de recurrencia ──
+export const saveRecurrence = async ({ data }: {
+  data: { slug: string; recurrence: Partial<PicadoRecurrence> & { id?: string | null } };
+}): Promise<PicadoRecurrence> => {
+  const r = data.recurrence;
+  const { data: row, error } = await supabase.rpc("picado_admin_save_recurrence", {
+    p_id: r.id ?? null,
+    p_slug: data.slug,
+    p_dia_semana: r.dia_semana,
+    p_hora: r.hora,
+    p_sede: r.sede,
+    p_formato: r.formato ?? "7v7",
+    p_cupo_max: r.cupo_max ?? 14,
+    p_abre_dias_antes: r.abre_dias_antes ?? 7,
+    p_cierra_horas_antes: r.cierra_horas_antes ?? 2,
+    p_semanas_anticipacion: r.semanas_anticipacion ?? 2,
+    p_activa: r.activa ?? true,
+  });
+  if (error) throw new Error(error.message);
+  return row as PicadoRecurrence;
+};
+
+// ── Admin Mutation: eliminar regla de recurrencia ─────────
+export const deleteRecurrence = async ({ data }: { data: { id: string } }): Promise<void> => {
+  const { error } = await supabase.rpc("picado_admin_delete_recurrence", {
+    p_id: data.id,
+  });
+  if (error) throw new Error(error.message);
+};
+
+// ── Admin: materializar partidos de las recurrencias ahora ─
+export const materializeRecurrences = async (): Promise<number> => {
+  const { data, error } = await supabase.rpc("picado_materialize_recurrences");
+  if (error) throw new Error(error.message);
+  return (data as number) ?? 0;
 };

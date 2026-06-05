@@ -9,6 +9,22 @@ export type PicadoGroup = {
   descripcion: string | null;
 };
 
+// Regla de recurrencia: genera partidos automáticamente cada semana.
+export type PicadoRecurrence = {
+  id: string;
+  group_id: string;
+  dia_semana: number; // 0=domingo ... 6=sábado
+  hora: string; // "20:00:00"
+  sede: string;
+  formato: string;
+  cupo_max: number;
+  abre_dias_antes: number;
+  cierra_horas_antes: number;
+  semanas_anticipacion: number;
+  activa: boolean;
+  created_at?: string;
+};
+
 // Player from the shared 'players' table (same as the main app)
 export type ExistingPlayer = {
   id: string;

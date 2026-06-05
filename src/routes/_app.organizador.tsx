@@ -33,6 +33,7 @@ import { useMatchRealtime } from "@/hooks/use-match-realtime";
 import { PlayerAvatar } from "@/components/Avatar";
 import { TeamCard } from "@/components/organizador/TeamCard";
 import { StatsTableRow } from "@/components/organizador/StatsTableRow";
+import { RecurrencesTab } from "@/components/organizador/RecurrencesTab";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Player } from "@/lib/mock-data";
@@ -228,7 +229,7 @@ function OrganizadorRoute() {
   return <OrganizadorPanel />;
 }
 
-type TabKey = "partidos" | "jugadores" | "reglas";
+type TabKey = "partidos" | "jugadores" | "reglas" | "recurrencias";
 
 function OrganizadorPanel() {
   const {
@@ -261,7 +262,7 @@ function OrganizadorPanel() {
   const isGeneralAdmin = adminRole === "general";
   const canManageTeams = adminRole === "general" || adminRole === "equipos";
   const availableTabs: TabKey[] = isGeneralAdmin
-    ? ["partidos", "jugadores", "reglas"]
+    ? ["partidos", "jugadores", "reglas", "recurrencias"]
     : ["partidos"];
 
   const [activeTab, setActiveTab] = useState<TabKey>("partidos");
@@ -757,19 +758,25 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
       </header>
 
       {/* Tabs Selector */}
-      <div className="flex border-b border-border/60 bg-card/30 rounded-xl p-1 gap-1 w-full max-w-md">
+      <div className="flex flex-wrap border-b border-border/60 bg-card/30 rounded-xl p-1 gap-1 w-full max-w-2xl">
         {availableTabs.map((t) => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
             className={cn(
-              "flex-1 text-center py-2.5 text-xs font-semibold uppercase tracking-wider rounded-lg transition",
+              "flex-1 min-w-[80px] text-center py-2.5 text-xs font-semibold uppercase tracking-wider rounded-lg transition",
               activeTab === t
                 ? "bg-lime text-lime-foreground shadow-glow"
                 : "text-muted-foreground hover:text-foreground hover:bg-secondary/40",
             )}
           >
-            {t === "partidos" ? "Partidos" : t === "jugadores" ? "Plantel" : "Reglas de Ranking"}
+            {t === "partidos"
+              ? "Partidos"
+              : t === "jugadores"
+                ? "Plantel"
+                : t === "reglas"
+                  ? "Reglas"
+                  : "Recurrentes"}
           </button>
         ))}
       </div>
@@ -1545,6 +1552,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
           </div>
         </div>
       )}
+
+      {/* CONTENIDO TAB 4: RECURRENCIAS */}
+      {isGeneralAdmin && activeTab === "recurrencias" && <RecurrencesTab />}
 
       {/* ── Modal Crear / Editar Jugador ── */}
       {isGeneralAdmin && showPlayerModal && (
