@@ -175,10 +175,10 @@ function Jugadores() {
               <Avatar jugador={p} size="lg" />
               <div className="text-right">
                 <div className="font-display text-3xl tabular-nums leading-none text-lime">
-                  {p.elo}
+                  {p.goles}
                 </div>
                 <div className="text-[9px] uppercase tracking-wider text-muted-foreground mt-0.5">
-                  elo
+                  goles
                 </div>
               </div>
             </div>

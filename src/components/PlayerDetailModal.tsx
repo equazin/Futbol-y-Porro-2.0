@@ -44,21 +44,21 @@ const POS_RING: Record<string, string> = {
 };
 
 export function PlayerDetailModal({ playerStats, onClose }: PlayerDetailModalProps) {
-  const { player, attended, wins, draws, losses, goals, assists, mvps, badges, eloHistory, bestPartner, nemesis } = playerStats;
+  const { player, attended, wins, draws, losses, goals, assists, mvps, badges, bestPartner, nemesis } = playerStats;
   const pos = player.position || "MED";
 
   const winRate = attended > 0 ? Math.round((wins / attended) * 100) : 0;
   const goalsPerMatch = attended > 0 ? (goals / attended).toFixed(1) : "0.0";
   const assistsPerMatch = attended > 0 ? (assists / attended).toFixed(1) : "0.0";
 
-  // FUT-style attributes 1-99
-  const ratingFactor = (player.rating - 900) / 10; // 900 -> 0, 1500 -> 60
-  const attrAtaque = Math.min(99, Math.max(40, Math.round(55 + ratingFactor + (goalsPerMatch as any) * 15)));
+  // Atributos estilo FUT 1-99, calculados a partir del rendimiento real
+  // (goles, asistencias, win rate y presencia), sin depender de ningún rating.
+  const attrAtaque = Math.min(99, Math.max(40, Math.round(55 + (goalsPerMatch as any) * 15 + (winRate > 50 ? 5 : 0))));
   const attrDefensa = Math.min(
     99,
-    Math.max(40, Math.round(50 + ratingFactor + (pos === "DEF" || pos === "ARQ" ? 20 : 0) + (winRate > 50 ? 5 : 0)))
+    Math.max(40, Math.round(50 + (pos === "DEF" || pos === "ARQ" ? 20 : 0) + (winRate > 50 ? 8 : 0)))
   );
-  const attrPase = Math.min(99, Math.max(40, Math.round(55 + ratingFactor + (assistsPerMatch as any) * 20)));
+  const attrPase = Math.min(99, Math.max(40, Math.round(55 + (assistsPerMatch as any) * 20)));
   const attrPresencia = Math.min(99, Math.max(40, Math.round(45 + (attended > 0 ? Math.min(10, attended) * 5 : 0))));
 
   return (
@@ -107,10 +107,10 @@ export function PlayerDetailModal({ playerStats, onClose }: PlayerDetailModalPro
           </div>
           <div className="text-right">
             <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold block">
-              Rating ELO
+              Posición
             </span>
-            <span className="font-display text-2xl text-lime tabular-nums font-black leading-none">
-              {player.rating}
+            <span className="font-display text-2xl text-lime uppercase font-black leading-none">
+              {pos}
             </span>
           </div>
         </div>
@@ -258,11 +258,6 @@ export function PlayerDetailModal({ playerStats, onClose }: PlayerDetailModalPro
             </div>
           </div>
 
-          {/* ELO History Sparkline */}
-          <div className="w-full shrink-0">
-            <EloSparkline history={eloHistory} />
-          </div>
-
           {/* FUT Skill bars attributes (Ataque, Defensa, Pase, Físico, Gral) */}
           <div className="w-full space-y-2 shrink-0">
             <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-1">
@@ -277,80 +272,6 @@ export function PlayerDetailModal({ playerStats, onClose }: PlayerDetailModalPro
           </div>
         </div>
 
-      </div>
-    </div>
-  );
-}
-
-function EloSparkline({ history }: { history?: number[] }) {
-  const safeHistory = history?.filter(Number.isFinite) ?? [];
-
-  if (safeHistory.length < 2) {
-    return (
-      <div className="bg-secondary/10 border border-border/30 rounded-2xl p-3 text-center">
-        <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
-          📉 Historial de ELO
-        </div>
-        <div className="text-[10px] text-muted-foreground/60">
-          Se necesitan al menos 2 partidos para graficar la tendencia.
-        </div>
-      </div>
-    );
-  }
-
-  const width = 300;
-  const height = 60;
-  const padding = 6;
-
-  const min = Math.min(...safeHistory);
-  const max = Math.max(...safeHistory);
-  const range = max - min || 10;
-  const yMin = min - range * 0.1;
-  const yMax = max + range * 0.1;
-
-  const points = safeHistory.map((val, idx) => {
-    const x = padding + (idx / (safeHistory.length - 1)) * (width - padding * 2);
-    const y = height - padding - ((val - yMin) / (yMax - yMin)) * (height - padding * 2);
-    return { x, y, val };
-  });
-
-  const pathD = points.map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const areaD = `${pathD} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`;
-
-  return (
-    <div className="space-y-1 font-sans">
-      <div className="flex justify-between items-center text-[9px] uppercase font-bold text-muted-foreground">
-        <span>📉 Evolución de ELO</span>
-        <span className="text-[8px] text-lime">Rango: {min} - {max}</span>
-      </div>
-      <div className="relative bg-secondary/10 border border-border/30 rounded-2xl p-2.5 overflow-hidden h-[76px] flex items-center justify-center">
-        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
-          <defs>
-            <linearGradient id="eloGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#84cc16" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#84cc16" stopOpacity="0.0" />
-            </linearGradient>
-          </defs>
-          {/* Gradient Area */}
-          <path d={areaD} fill="url(#eloGradient)" />
-          {/* Line */}
-          <path d={pathD} fill="none" stroke="#84cc16" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-[0_0_4px_rgba(132,204,22,0.4)]" />
-          {/* Points */}
-          {points.map((p, idx) => (
-            <circle
-              key={idx}
-              cx={p.x}
-              cy={p.y}
-              r="2.5"
-              fill="#1a1c1e"
-              stroke="#84cc16"
-              strokeWidth="1.5"
-              className="transition-transform hover:scale-150 cursor-pointer"
-            >
-              <title>Partido {idx}: {p.val} ELO</title>
-            </circle>
-          ))}
-        </svg>
       </div>
     </div>
   );

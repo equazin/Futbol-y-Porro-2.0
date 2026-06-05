@@ -155,8 +155,6 @@ function initialResult(m: Match): MatchResult {
 function balance(ids: string[], playerMap: Record<string, Player>): [string[], string[]] {
   const a: string[] = [];
   const b: string[] = [];
-  let sa = 0;
-  let sb = 0;
 
   // Separamos por posiciones
   const playersByPosition: Record<string, string[]> = {
@@ -176,38 +174,26 @@ function balance(ids: string[], playerMap: Record<string, Player>): [string[], s
     }
   }
 
-  // Ordenamos cada posición por rating descendente
-  const positionsOrder = ["ARQ", "DEF", "DEL", "MED"]; // Primero arqueros, luego defensas, delanteros, mediocampistas
+  // Repartimos cada posición en cantidades parejas entre A y B.
+  // Mezclamos al azar dentro de cada posición para que el sorteo varíe.
+  const positionsOrder = ["ARQ", "DEF", "DEL", "MED"];
   for (const pos of positionsOrder) {
-    const sortedGroup = playersByPosition[pos].sort((x, y) => {
-      const rx = playerMap[x]?.rating ?? 1200;
-      const ry = playerMap[y]?.rating ?? 1200;
-      return ry - rx;
-    });
+    const group = [...playersByPosition[pos]].sort(() => Math.random() - 0.5);
 
-    for (const id of sortedGroup) {
-      const r = playerMap[id]?.rating ?? 1200;
-      // Para balancear tanto posición como rating:
-      // Si la diferencia de cantidad de jugadores de esta posición entre A y B es > 0, preferimos la que tenga menos.
-      // Si es igual, preferimos la que tenga menos rating acumulado.
+    for (const id of group) {
       const countA = a.filter((x) => playerMap[x]?.position === pos).length;
       const countB = b.filter((x) => playerMap[x]?.position === pos).length;
 
+      // Mandamos al equipo con menos jugadores de esta posición;
+      // si están igualados, al que tenga menos jugadores en total.
       if (countA < countB) {
         a.push(id);
-        sa += r;
       } else if (countB < countA) {
         b.push(id);
-        sb += r;
+      } else if (a.length <= b.length) {
+        a.push(id);
       } else {
-        // Mismo número de jugadores de esta posición: decidimos por rating total
-        if (sa <= sb) {
-          a.push(id);
-          sa += r;
-        } else {
-          b.push(id);
-          sb += r;
-        }
+        b.push(id);
       }
     }
   }
@@ -729,7 +715,6 @@ export type PlayerPoints = {
   points: number;
   badges: PlayerBadge[];
   absences?: number;
-  eloHistory?: number[];
   bestPartner?: { player: Player; winRate: number; matches: number };
   nemesis?: { player: Player; winRate: number; matches: number };
 };
@@ -919,57 +904,7 @@ export function computeRanking(
     r.badges = badges;
   }
 
-  // 5. Calcular Historial de ELO
-  const tempElos: Record<string, number> = {};
-  const eloHistoryMap: Record<string, number[]> = {};
-  for (const p of storePlayers) {
-    tempElos[p.id] = 1200;
-    eloHistoryMap[p.id] = [1200];
-  }
-
-  for (const m of sortedMatches) {
-    if (!m.result) continue;
-    const { teamA, teamB, scoreA, scoreB, stats } = m.result;
-    const activeA = teamA.filter((pid) => stats[pid]?.attended && Number.isFinite(tempElos[pid]));
-    const activeB = teamB.filter((pid) => stats[pid]?.attended && Number.isFinite(tempElos[pid]));
-
-    const avgA = activeA.length
-      ? activeA.reduce((sum, pid) => sum + tempElos[pid], 0) / activeA.length
-      : 1200;
-    const avgB = activeB.length
-      ? activeB.reduce((sum, pid) => sum + tempElos[pid], 0) / activeB.length
-      : 1200;
-
-    const expectedA = 1 / (1 + Math.pow(10, (avgB - avgA) / 400));
-    const expectedB = 1 - expectedA;
-
-    let sa = 0.5;
-    let sb = 0.5;
-    if (scoreA > scoreB) {
-      sa = 1;
-      sb = 0;
-    } else if (scoreB > scoreA) {
-      sa = 0;
-      sb = 1;
-    }
-
-    const K = 32;
-    const changeA = Math.round(K * (sa - expectedA));
-    const changeB = Math.round(K * (sb - expectedB));
-
-    for (const pid of activeA) {
-      tempElos[pid] += changeA;
-    }
-    for (const pid of activeB) {
-      tempElos[pid] += changeB;
-    }
-
-    for (const p of storePlayers) {
-      eloHistoryMap[p.id].push(tempElos[p.id]);
-    }
-  }
-
-  // 6. Calcular Química de Duplas (Best Partner y Nemesis)
+  // 5. Calcular Química de Duplas (Best Partner y Nemesis)
   const teammateStats: Record<string, Record<string, { played: number; won: number }>> = {};
   const opponentStats: Record<string, Record<string, { played: number; won: number }>> = {};
   for (const p1 of storePlayers) {
@@ -1089,9 +1024,6 @@ export function computeRanking(
 
     const row = map[p.id];
     if (row) {
-      const offset = p.rating - tempElos[p.id];
-      row.eloHistory = eloHistoryMap[p.id].map((val) => val + offset);
-
       if (bestP && bestMatches > 0) {
         row.bestPartner = {
           player: bestP,
@@ -1110,6 +1042,6 @@ export function computeRanking(
   }
 
   return Object.values(map).sort(
-    (a, b) => b.points - a.points || b.player.rating - a.player.rating,
+    (a, b) => b.points - a.points || b.goals - a.goals,
   );
 }

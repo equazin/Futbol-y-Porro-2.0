@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Award, CalendarDays, Goal, LogOut, Shield, Star, Trophy, UserRound } from "lucide-react";
+import { Award, CalendarDays, Goal, LogOut, Shield, Star, Trophy } from "lucide-react";
 import { useMemo } from "react";
 import type { ComponentType } from "react";
 import { PlayerAvatar } from "@/components/Avatar";
@@ -99,8 +99,7 @@ function Perfil() {
         </div>
       </section>
 
-      <section className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-        <ProfileStat label="ELO" value={player.rating} icon={UserRound} />
+      <section className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
         <ProfileStat label="Puntos" value={stats?.points ?? 0} icon={Trophy} accent="text-lime" />
         <ProfileStat label="Partidos" value={attended} icon={CalendarDays} />
         <ProfileStat label="Goles" value={stats?.goals ?? 0} icon={Goal} accent="text-lime" />
@@ -127,8 +126,8 @@ function Perfil() {
 
         <div className="space-y-6">
           <ProfileList
-            title="Tus proximos picados"
-            empty="No estas anotado en ningun picado abierto."
+            title="Tus proximos partidos"
+            empty="No estas anotado en ningun partido abierto."
             matches={upcoming}
             playerId={stored.player_id}
             mode="upcoming"

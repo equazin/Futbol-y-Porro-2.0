@@ -427,7 +427,7 @@ function PersonalHomeAddOn({
               </div>
               <h2 className="font-display text-3xl uppercase leading-none">{player.nickname}</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                {player.name} · {player.position} · ELO {player.rating}
+                {player.name} · {player.position}
               </p>
             </div>
           </div>

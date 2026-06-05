@@ -342,13 +342,6 @@ function OrganizadorPanel() {
     [activeMatch, playerMap],
   );
 
-  const avgA = teamAPlayers.length
-    ? Math.round(teamAPlayers.reduce((sum, p) => sum + p.rating, 0) / teamAPlayers.length)
-    : 0;
-  const avgB = teamBPlayers.length
-    ? Math.round(teamBPlayers.reduce((sum, p) => sum + p.rating, 0) / teamBPlayers.length)
-    : 0;
-
   // Lógica Drag & Drop
   const handleDragStart = (e: React.DragEvent, playerId: string) => {
     if (!canManageTeams || !activeMatch || activeMatch.played) return;
@@ -508,18 +501,16 @@ function OrganizadorPanel() {
     const formatTeam = (players: typeof teamAPlayers) =>
       players.map((p) => `• ${p.nickname} ${posEmoji[p.position] ?? ""}`).join("\n");
 
-    const text = `⚽ *EQUIPOS DEL PICADO* ⚽
+    const text = `⚽ *EQUIPOS DEL PARTIDO* ⚽
 📍 *Sede:* ${activeMatch.venue}
 🗓️ *Fecha:* ${dateStr} a las ${(activeMatch.hora ?? "").slice(0, 5)} hs
 👥 *Formato:* ${activeMatch.format}
 
 🟢 *EQUIPO A* (${teamAPlayers.length} jugadores)
 ${formatTeam(teamAPlayers)}
-_Promedio ELO: ${avgA}_
 
 🟡 *EQUIPO B* (${teamBPlayers.length} jugadores)
 ${formatTeam(teamBPlayers)}
-_Promedio ELO: ${avgB}_
 
 _¡Nos vemos en la cancha!_ 🙌`;
 
@@ -586,7 +577,7 @@ ${assistants.length > 0 ? assistants.map((a) => `• ${a}`).join("\n") : "_No se
 👑 *MVP del Partido:*
 🏆 *${mvpName}* 🏆
 -----------------------------------------
-_¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
+_¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
 
     navigator.clipboard.writeText(text);
     toast.success("¡Crónica de WhatsApp copiada al portapapeles!");
@@ -1132,12 +1123,6 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                             ({teamAPlayers.length})
                           </span>
                         </div>
-                        <div className="text-right">
-                          <div className="font-display text-xl leading-none text-lime">{avgA}</div>
-                          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">
-                            prom.
-                          </div>
-                        </div>
                       </div>
 
                       <ul className="space-y-1.5">
@@ -1165,9 +1150,6 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                                   {p.position}
                                 </div>
                               </div>
-                              <span className="font-display text-sm tabular-nums text-muted-foreground">
-                                {p.rating}
-                              </span>
                               {isGeneralAdmin && !activeMatch.played && (
                                 <button
                                   onClick={() => handleRemoveSignupManual(p.id)}
@@ -1212,12 +1194,6 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                             ({teamBPlayers.length})
                           </span>
                         </div>
-                        <div className="text-right">
-                          <div className="font-display text-xl leading-none text-gold">{avgB}</div>
-                          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">
-                            prom.
-                          </div>
-                        </div>
                       </div>
 
                       <ul className="space-y-1.5">
@@ -1245,9 +1221,6 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                                   {p.position}
                                 </div>
                               </div>
-                              <span className="font-display text-sm tabular-nums text-muted-foreground">
-                                {p.rating}
-                              </span>
                               {isGeneralAdmin && !activeMatch.played && (
                                 <button
                                   onClick={() => handleRemoveSignupManual(p.id)}
@@ -1284,7 +1257,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                           <option value="">-- Seleccionar jugador del plantel --</option>
                           {unassignedPlayers.map((p) => (
                             <option key={p.id} value={p.id}>
-                              {p.nickname} ({p.name}) - {p.position} [ELO: {p.rating}]
+                              {p.nickname} ({p.name}) - {p.position}
                             </option>
                           ))}
                         </select>
@@ -1644,9 +1617,6 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                         >
                           {p.position}
                         </span>
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          ELO {p.rating}
-                        </span>
                       </div>
                       {p.adminRole && (
                         <span className="mt-1.5 inline-flex items-center rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gold">
@@ -1916,36 +1886,6 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
                   </select>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">
-                    ELO / Rating
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="3000"
-                    required
-                    value={modalMode === "create" ? newPlayerRating : editPlayerRating}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value) || 1200;
-                      if (modalMode === "create") {
-                        setNewPlayerRating(v);
-                      } else {
-                        setEditPlayerRating(v);
-                      }
-                    }}
-                    className="w-full rounded-xl border border-border bg-secondary px-4 py-2.5 text-sm text-center font-mono focus:outline-none focus:border-lime transition"
-                  />
-                </div>
-              </div>
-
-              {/* ELO helper */}
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-secondary/50 rounded-xl px-3 py-2">
-                <span>💡</span>
-                <span>
-                  ELO base sugerido: <strong>1200</strong>. Rango: 800 (principiante) — 1800
-                  (experto).
-                </span>
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -1984,7 +1924,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo picado_ 🙌`;
             </button>
             <h2 className="font-display text-2xl uppercase mb-1 text-lime">Crear Nuevo Partido</h2>
             <p className="text-xs text-muted-foreground mb-4">
-              Ingresá los datos del picado en Supabase.
+              Ingresá los datos del partido en Supabase.
             </p>
             <form onSubmit={handleCreateMatch} className="space-y-3">
               <div className="space-y-1">
