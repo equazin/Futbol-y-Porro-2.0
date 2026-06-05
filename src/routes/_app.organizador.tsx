@@ -246,6 +246,7 @@ function OrganizadorPanel() {
     reopenMatch,
     updateRules,
     resetRules,
+    saveRules,
     addPlayer,
     updatePlayer,
     deletePlayer,
@@ -1730,12 +1731,24 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
               />
             </div>
 
-            <div className="col-span-full pt-4 flex justify-end">
+            <div className="col-span-full pt-4 flex items-center justify-between gap-4 flex-wrap">
               <button
                 onClick={resetRules}
                 className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:underline"
               >
                 Restablecer valores por defecto
+              </button>
+              <button
+                onClick={() => {
+                  toast.promise(saveRules(), {
+                    loading: "Guardando reglas en Supabase...",
+                    success: "Reglas guardadas. Valen para todos los dispositivos.",
+                    error: "Error al guardar las reglas",
+                  });
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-2.5 text-xs font-bold text-lime-foreground hover:brightness-110 shadow-glow transition"
+              >
+                <Save className="size-3.5" /> Guardar reglas
               </button>
             </div>
           </div>

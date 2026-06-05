@@ -17,6 +17,8 @@ import {
   adminDeletePlayer,
   getMatchesWithSignups,
   getJugadores,
+  getScoringRules,
+  saveScoringRules,
 } from "@/lib/api/picado.functions";
 import type { PicadoAdminRole } from "@/types/picado";
 
@@ -103,6 +105,7 @@ type Actions = {
   reopenMatch: (matchId: string) => Promise<void>;
   updateRules: (patch: Partial<ScoringRules>) => void;
   resetRules: () => void;
+  saveRules: () => Promise<void>;
   // Admin and Player CRUD Actions
   loginAdmin: (pin: string) => boolean;
   loginAdminByPlayer: (role: AdminRole, playerId: string) => void;
@@ -494,6 +497,11 @@ export const useStore = create<State & Actions>()(
 
       updateRules: (patch) => set((s) => ({ rules: { ...s.rules, ...patch } })),
       resetRules: () => set({ rules: defaultRules }),
+      saveRules: async () => {
+        const slug = import.meta.env.VITE_GROUP_SLUG || "fyp-fc";
+        const rules = useStore.getState().rules;
+        await saveScoringRules({ data: { slug, rules } });
+      },
 
       loginAdmin: (pin) => {
         const access = ADMIN_ACCESS_CODES.find((entry) => pin.trim() === entry.pin);
@@ -635,6 +643,7 @@ export const useStore = create<State & Actions>()(
         const slug = import.meta.env.VITE_GROUP_SLUG || "fyp-fc";
         const dbMatches = (await getMatchesWithSignups({ data: { slug } })) as StoredMatch[];
         const dbPlayers = await getJugadores();
+        const dbRules = await getScoringRules({ data: { slug } });
 
         const POS_MAP: Record<string, string> = {
           arquero: "ARQ",
@@ -674,6 +683,9 @@ export const useStore = create<State & Actions>()(
         set({
           matches: dbMatches,
           players: mappedPlayers,
+          // Si el grupo tiene reglas guardadas en Supabase, las usamos
+          // (mezcladas con los defaults por si falta algún campo).
+          ...(dbRules ? { rules: { ...defaultRules, ...dbRules } } : {}),
         });
       },
     }),

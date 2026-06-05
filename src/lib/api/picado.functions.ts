@@ -428,3 +428,26 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
     };
   });
 };
+
+// ── Fetch: reglas de puntuación del grupo ─────────────────
+export const getScoringRules = async ({ data }: { data: { slug: string } }): Promise<Record<string, number> | null> => {
+  const { data: group, error } = await supabase
+    .from("picado_groups")
+    .select("scoring_rules")
+    .eq("slug", data.slug)
+    .single();
+
+  if (error || !group) return null;
+  return (group.scoring_rules as Record<string, number> | null) ?? null;
+};
+
+// ── Admin Mutation: guardar reglas de puntuación ──────────
+export const saveScoringRules = async ({ data }: {
+  data: { slug: string; rules: Record<string, number> };
+}): Promise<void> => {
+  const { error } = await supabase.rpc("picado_admin_save_rules", {
+    p_slug: data.slug,
+    p_rules: data.rules,
+  });
+  if (error) throw new Error(error.message);
+};
