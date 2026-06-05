@@ -26,12 +26,13 @@ import {
   useStore,
   type AdminRole,
   type StoredMatch,
-  type PlayerStats,
   type MatchResult,
 } from "@/store/match-store";
 import { usePicadoPlayer } from "@/hooks/use-picado-player";
 import { useMatchRealtime } from "@/hooks/use-match-realtime";
 import { PlayerAvatar } from "@/components/Avatar";
+import { TeamCard } from "@/components/organizador/TeamCard";
+import { StatsTableRow } from "@/components/organizador/StatsTableRow";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Player } from "@/lib/mock-data";
@@ -1095,147 +1096,39 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
-                    {/* Equipo A */}
-                    <div
-                      onDragOver={(e) => {
-                        if (canManageTeams && !activeMatch.played) e.preventDefault();
-                      }}
-                      onDragEnter={() => {
-                        if (canManageTeams && !activeMatch.played) setIsDragOverA(true);
-                      }}
+                    <TeamCard
+                      team="A"
+                      players={teamAPlayers}
+                      canManageTeams={canManageTeams}
+                      played={!!activeMatch.played}
+                      canRemove={isGeneralAdmin}
+                      isDragOver={isDragOverA}
+                      onDragStart={handleDragStart}
+                      onDragEnter={() => setIsDragOverA(true)}
                       onDragLeave={() => setIsDragOverA(false)}
                       onDrop={(e) => {
                         setIsDragOverA(false);
                         handleDrop(e, "A");
                       }}
-                      className={cn(
-                        "rounded-2xl border bg-card p-4 transition-all duration-200 min-h-[300px]",
-                        isDragOverA
-                          ? "border-lime shadow-glow bg-lime/5 scale-[1.01]"
-                          : "border-border/60",
-                        activeMatch.played ? "opacity-90" : "",
-                      )}
-                    >
-                      <div className="flex items-center justify-between mb-3 border-b border-border/40 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="size-3 rounded-full bg-lime" />
-                          <span className="font-display text-lg uppercase">Equipo A</span>
-                          <span className="text-xs text-muted-foreground">
-                            ({teamAPlayers.length})
-                          </span>
-                        </div>
-                      </div>
+                      onRemove={handleRemoveSignupManual}
+                    />
 
-                      <ul className="space-y-1.5">
-                        {teamAPlayers.length === 0 ? (
-                          <div className="h-48 border border-dashed border-border/40 rounded-xl flex items-center justify-center text-xs text-muted-foreground/60">
-                            Arrastrá jugadores aquí
-                          </div>
-                        ) : (
-                          teamAPlayers.map((p) => (
-                            <li
-                              key={p.id}
-                              draggable={canManageTeams && !activeMatch.played}
-                              onDragStart={(e) => handleDragStart(e, p.id)}
-                              className={cn(
-                                "flex items-center gap-3 rounded-xl bg-secondary/50 px-2.5 py-2",
-                                activeMatch.played || !canManageTeams
-                                  ? ""
-                                  : "cursor-grab active:cursor-grabbing hover:bg-secondary transition",
-                              )}
-                            >
-                              <PlayerAvatar player={p} size="sm" />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-xs font-semibold truncate">{p.nickname}</div>
-                                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                  {p.position}
-                                </div>
-                              </div>
-                              {isGeneralAdmin && !activeMatch.played && (
-                                <button
-                                  onClick={() => handleRemoveSignupManual(p.id)}
-                                  className="p-1 rounded hover:bg-out/25 text-muted-foreground hover:text-out transition shrink-0"
-                                  title="Dar de baja de Supabase"
-                                >
-                                  <X className="size-3" />
-                                </button>
-                              )}
-                            </li>
-                          ))
-                        )}
-                      </ul>
-                    </div>
-
-                    {/* Equipo B */}
-                    <div
-                      onDragOver={(e) => {
-                        if (canManageTeams && !activeMatch.played) e.preventDefault();
-                      }}
-                      onDragEnter={() => {
-                        if (canManageTeams && !activeMatch.played) setIsDragOverB(true);
-                      }}
+                    <TeamCard
+                      team="B"
+                      players={teamBPlayers}
+                      canManageTeams={canManageTeams}
+                      played={!!activeMatch.played}
+                      canRemove={isGeneralAdmin}
+                      isDragOver={isDragOverB}
+                      onDragStart={handleDragStart}
+                      onDragEnter={() => setIsDragOverB(true)}
                       onDragLeave={() => setIsDragOverB(false)}
                       onDrop={(e) => {
                         setIsDragOverB(false);
                         handleDrop(e, "B");
                       }}
-                      className={cn(
-                        "rounded-2xl border bg-card p-4 transition-all duration-200 min-h-[300px]",
-                        isDragOverB
-                          ? "border-gold shadow-glow bg-gold/5 scale-[1.01]"
-                          : "border-border/60",
-                        activeMatch.played ? "opacity-90" : "",
-                      )}
-                    >
-                      <div className="flex items-center justify-between mb-3 border-b border-border/40 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="size-3 rounded-full bg-gold" />
-                          <span className="font-display text-lg uppercase">Equipo B</span>
-                          <span className="text-xs text-muted-foreground">
-                            ({teamBPlayers.length})
-                          </span>
-                        </div>
-                      </div>
-
-                      <ul className="space-y-1.5">
-                        {teamBPlayers.length === 0 ? (
-                          <div className="h-48 border border-dashed border-border/40 rounded-xl flex items-center justify-center text-xs text-muted-foreground/60">
-                            Arrastrá jugadores aquí
-                          </div>
-                        ) : (
-                          teamBPlayers.map((p) => (
-                            <li
-                              key={p.id}
-                              draggable={canManageTeams && !activeMatch.played}
-                              onDragStart={(e) => handleDragStart(e, p.id)}
-                              className={cn(
-                                "flex items-center gap-3 rounded-xl bg-secondary/50 px-2.5 py-2",
-                                activeMatch.played || !canManageTeams
-                                  ? ""
-                                  : "cursor-grab active:cursor-grabbing hover:bg-secondary transition",
-                              )}
-                            >
-                              <PlayerAvatar player={p} size="sm" />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-xs font-semibold truncate">{p.nickname}</div>
-                                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                  {p.position}
-                                </div>
-                              </div>
-                              {isGeneralAdmin && !activeMatch.played && (
-                                <button
-                                  onClick={() => handleRemoveSignupManual(p.id)}
-                                  className="p-1 rounded hover:bg-out/25 text-muted-foreground hover:text-out transition shrink-0"
-                                  title="Dar de baja de Supabase"
-                                >
-                                  <X className="size-3" />
-                                </button>
-                              )}
-                            </li>
-                          ))
-                        )}
-                      </ul>
-                    </div>
+                      onRemove={handleRemoveSignupManual}
+                    />
                   </div>
 
                   {/* Inscripción Manual */}
@@ -1387,124 +1280,22 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                             assists: 0,
                             mvp: false,
                           };
-                          const isTeamA = result.teamA.includes(pid);
-
-                          const updatePlayerStat = (
-                            field: keyof PlayerStats,
-                            val: PlayerStats[keyof PlayerStats],
-                          ) => {
-                            if (activeMatch.played) return;
-                            setStat(activeMatch.id, pid, { [field]: val });
-                          };
 
                           return (
-                            <li
+                            <StatsTableRow
                               key={pid}
-                              className={cn(
-                                "grid grid-cols-[1fr_repeat(4,3.8rem)] md:grid-cols-[1fr_repeat(4,5rem)] items-center px-4 py-2.5",
-                                playerStats.attended ? "" : "opacity-50 bg-secondary/10",
-                              )}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <PlayerAvatar player={player} size="sm" />
-                                <div className="min-w-0">
-                                  <div className="text-xs font-semibold truncate flex items-center gap-1">
-                                    {player.nickname}
-                                    <span
-                                      className={cn(
-                                        "size-1.5 rounded-full inline-block shrink-0",
-                                        isTeamA ? "bg-lime" : "bg-gold",
-                                      )}
-                                    />
-                                  </div>
-                                  <span className="text-[9px] text-muted-foreground uppercase">
-                                    {player.position}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Checkbox Asistencia */}
-                              <div className="flex justify-center">
-                                <input
-                                  type="checkbox"
-                                  checked={playerStats.attended}
-                                  disabled={activeMatch.played}
-                                  onChange={(e) => updatePlayerStat("attended", e.target.checked)}
-                                  className="size-4 rounded border-border bg-secondary text-lime focus:ring-lime focus:ring-offset-background cursor-pointer"
-                                />
-                              </div>
-
-                              {/* Contador Goles */}
-                              <div className="flex items-center justify-center gap-1 font-mono text-xs">
-                                <button
-                                  onClick={() =>
-                                    updatePlayerStat("goals", Math.max(0, playerStats.goals - 1))
-                                  }
-                                  disabled={activeMatch.played || !playerStats.attended}
-                                  className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
-                                >
-                                  -
-                                </button>
-                                <span className="w-4 text-center tabular-nums">
-                                  {playerStats.goals}
-                                </span>
-                                <button
-                                  onClick={() => updatePlayerStat("goals", playerStats.goals + 1)}
-                                  disabled={activeMatch.played || !playerStats.attended}
-                                  className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
-                                >
-                                  +
-                                </button>
-                              </div>
-
-                              {/* Contador Asistencias */}
-                              <div className="flex items-center justify-center gap-1 font-mono text-xs">
-                                <button
-                                  onClick={() =>
-                                    updatePlayerStat(
-                                      "assists",
-                                      Math.max(0, playerStats.assists - 1),
-                                    )
-                                  }
-                                  disabled={activeMatch.played || !playerStats.attended}
-                                  className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
-                                >
-                                  -
-                                </button>
-                                <span className="w-4 text-center tabular-nums">
-                                  {playerStats.assists}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    updatePlayerStat("assists", playerStats.assists + 1)
-                                  }
-                                  disabled={activeMatch.played || !playerStats.attended}
-                                  className="size-5 rounded bg-secondary hover:bg-border text-[9px] flex items-center justify-center font-bold"
-                                >
-                                  +
-                                </button>
-                              </div>
-
-                              {/* MVP */}
-                              <div className="flex justify-center">
-                                <button
-                                  onClick={() =>
-                                    !activeMatch.played &&
-                                    playerStats.attended &&
-                                    setMvp(activeMatch.id, playerStats.mvp ? null : pid)
-                                  }
-                                  disabled={activeMatch.played || !playerStats.attended}
-                                  className={cn(
-                                    "p-1 rounded-full border transition",
-                                    playerStats.mvp
-                                      ? "bg-gold/20 border-gold/50 text-gold"
-                                      : "border-border/40 text-muted-foreground/30 hover:border-border hover:text-muted-foreground",
-                                  )}
-                                >
-                                  <Award className="size-4" />
-                                </button>
-                              </div>
-                            </li>
+                              player={player}
+                              stats={playerStats}
+                              isTeamA={result.teamA.includes(pid)}
+                              played={!!activeMatch.played}
+                              onUpdateStat={(field, val) => {
+                                if (activeMatch.played) return;
+                                setStat(activeMatch.id, pid, { [field]: val });
+                              }}
+                              onToggleMvp={() =>
+                                setMvp(activeMatch.id, playerStats.mvp ? null : pid)
+                              }
+                            />
                           );
                         })}
                       </ul>
