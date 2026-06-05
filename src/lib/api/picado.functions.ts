@@ -383,7 +383,7 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
 
   const { data: signups, error: signupsError } = await supabase
     .from("picado_signups")
-    .select("match_id, player_id, estado, orden")
+    .select("match_id, player_id, estado, orden, confirmado")
     .in("match_id", matchIds)
     .in("estado", ["titular", "espera"])
     .order("orden", { ascending: true });
@@ -394,6 +394,10 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
     const matchSignups = (signups ?? []).filter((s) => s.match_id === m.id);
     const confirmed = matchSignups.filter((s) => s.estado === "titular").map((s) => s.player_id);
     const waitlist = matchSignups.filter((s) => s.estado === "espera").map((s) => s.player_id);
+    // IDs de quienes confirmaron asistencia (distinto de estar anotado).
+    const attendanceConfirmed = matchSignups
+      .filter((s) => s.confirmado)
+      .map((s) => s.player_id);
 
     let result: unknown = undefined;
     if (m.notes || m.notas) {
@@ -414,6 +418,7 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
       capacity: m.cupo_max,
       confirmed,
       waitlist,
+      attendanceConfirmed,
       status:
         m.estado === "programado"
           ? "closed"
@@ -428,6 +433,19 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
       dbEstado: m.estado,
     };
   });
+};
+
+// ── Mutation: confirmar/desconfirmar asistencia via DNI ───
+export const confirmarAsistencia = async ({ data }: {
+  data: { dni: string; match_id: string; confirmado: boolean };
+}): Promise<{ ok: boolean; message: string; confirmado?: boolean }> => {
+  const { data: result, error } = await supabase.rpc("picado_confirmar_asistencia", {
+    p_dni: data.dni.trim(),
+    p_match_id: data.match_id,
+    p_confirmado: data.confirmado,
+  });
+  if (error) throw new Error(error.message);
+  return result as { ok: boolean; message: string; confirmado?: boolean };
 };
 
 // ── Fetch: reglas de puntuación del grupo ─────────────────

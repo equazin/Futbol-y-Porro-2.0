@@ -51,6 +51,8 @@ export type StoredMatch = Match & {
   result?: MatchResult;
   played?: boolean;
   dbEstado?: string;
+  /** player_ids que confirmaron asistencia (distinto de estar anotado). */
+  attendanceConfirmed?: string[];
 };
 
 export type ScoringRules = {

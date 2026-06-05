@@ -58,6 +58,7 @@ export type PicadoSignup = {
   player_id: string;
   estado: SignupEstado;
   orden: number;
+  confirmado?: boolean;
   created_at: string;
 };
 
