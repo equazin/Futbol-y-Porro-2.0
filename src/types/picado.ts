@@ -1,6 +1,6 @@
 export type PicadoEstado = "programado" | "abierto" | "cerrado" | "jugado" | "cancelado";
 export type SignupEstado = "titular" | "espera" | "baja";
-export type PicadoAdminRole = "general" | "equipos";
+export type PicadoAdminRole = "general" | "equipos" | "fondo";
 
 export type PicadoGroup = {
   id: string;

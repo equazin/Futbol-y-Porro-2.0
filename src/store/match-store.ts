@@ -77,7 +77,7 @@ export const defaultRules: ScoringRules = {
   goalOfTheDay: 3,
 };
 
-export type AdminRole = "general" | "equipos";
+export type AdminRole = "general" | "equipos" | "fondo";
 export type AdminSource = "pin" | "dni";
 export type PicadoPlayer = Player & { adminRole?: PicadoAdminRole | null };
 

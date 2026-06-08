@@ -81,7 +81,12 @@ export function AppShell() {
               {isAdmin && adminRole ? (
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-md border border-lime/30 bg-lime/10 px-2.5 py-1 text-xs font-semibold text-lime shadow-glow">
-                    <Unlock className="size-3" /> {adminRole === "general" ? "Admin" : "Equipos"}
+                    <Unlock className="size-3" />{" "}
+                    {adminRole === "general"
+                      ? "Admin"
+                      : adminRole === "fondo"
+                        ? "Fondo"
+                        : "Equipos"}
                   </span>
                   <button
                     onClick={() => {

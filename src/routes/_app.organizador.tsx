@@ -262,11 +262,16 @@ function OrganizadorPanel() {
 
   const isGeneralAdmin = adminRole === "general";
   const canManageTeams = adminRole === "general" || adminRole === "equipos";
+  const canManageFondo = adminRole === "general" || adminRole === "fondo";
+  // Cada rol ve solo sus pestañas: general todas, equipos solo partidos,
+  // fondo solo el fondo común.
   const availableTabs: TabKey[] = isGeneralAdmin
     ? ["partidos", "jugadores", "reglas", "recurrencias", "fondo"]
-    : ["partidos"];
+    : adminRole === "fondo"
+      ? ["fondo"]
+      : ["partidos"];
 
-  const [activeTab, setActiveTab] = useState<TabKey>("partidos");
+  const [activeTab, setActiveTab] = useState<TabKey>(adminRole === "fondo" ? "fondo" : "partidos");
 
   // Selector del partido activo
   const defaultSelectedId = useMemo(() => {
@@ -741,10 +746,12 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
           <p className="text-muted-foreground text-sm mt-1">
             {isGeneralAdmin
               ? "Gestioná partidos, modificá el plantel y configurá reglas."
-              : "Vista de partidos y armado de equipos."}
+              : adminRole === "fondo"
+                ? "Gestioná el fondo común del club."
+                : "Vista de partidos y armado de equipos."}
           </p>
           <span className="mt-2 inline-flex rounded-full border border-lime/30 bg-lime/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-lime">
-            {isGeneralAdmin ? "Admin general" : "Admin equipos"}
+            {isGeneralAdmin ? "Admin general" : adminRole === "fondo" ? "Admin fondo" : "Admin equipos"}
           </span>
         </div>
         <button
@@ -1428,7 +1435,11 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                       </div>
                       {p.adminRole && (
                         <span className="mt-1.5 inline-flex items-center rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gold">
-                          {p.adminRole === "general" ? "Admin total" : "Editar equipos"}
+                          {p.adminRole === "general"
+                            ? "Admin total"
+                            : p.adminRole === "fondo"
+                              ? "Editar fondo"
+                              : "Editar equipos"}
                         </span>
                       )}
                     </div>
@@ -1566,7 +1577,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
       {isGeneralAdmin && activeTab === "recurrencias" && <RecurrencesTab />}
 
       {/* CONTENIDO TAB 5: FONDO COMÚN */}
-      {isGeneralAdmin && activeTab === "fondo" && <FondoTab />}
+      {canManageFondo && activeTab === "fondo" && <FondoTab />}
 
       {/* ── Modal Crear / Editar Jugador ── */}
       {isGeneralAdmin && showPlayerModal && (
@@ -1686,6 +1697,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                     <option value="none">Sin acceso admin</option>
                     <option value="general">Admin total</option>
                     <option value="equipos">Editar equipos</option>
+                    <option value="fondo">Editar fondo común</option>
                   </select>
                   <p className="text-[10px] leading-relaxed text-muted-foreground">
                     El jugador con permiso entra a Organizador con su DNI verificado, sin usar PIN.
