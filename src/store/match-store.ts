@@ -211,6 +211,22 @@ function getWinnerTeam(result: MatchResult): string[] {
   return [];
 }
 
+function getTeamScore(team: string[], stats: Record<string, PlayerStats>) {
+  return team.reduce((sum, playerId) => {
+    const row = stats[playerId];
+    if (!row || row.attended === false) return sum;
+    return sum + Math.max(0, row.goals || 0);
+  }, 0);
+}
+
+function withDerivedScore(result: MatchResult): MatchResult {
+  return {
+    ...result,
+    scoreA: getTeamScore(result.teamA, result.stats),
+    scoreB: getTeamScore(result.teamB, result.stats),
+  };
+}
+
 function topVote(
   votes: MatchVote[],
   field: "mvp_vote" | "gol_vote",
@@ -268,7 +284,11 @@ export const useStore = create<State & Actions>()(
         set((s) => {
           const matches = s.matches.map((m) => {
             if (m.id !== matchId) return m;
-            updatedResult = { ...(m.result ?? initialResult(m)), teamA, teamB };
+            updatedResult = withDerivedScore({
+              ...(m.result ?? initialResult(m)),
+              teamA,
+              teamB,
+            });
             return { ...m, result: updatedResult };
           });
           return { matches };
@@ -290,7 +310,11 @@ export const useStore = create<State & Actions>()(
           const matches = s.matches.map((m) => {
             if (m.id !== matchId) return m;
             const [a, b] = balance(m.confirmed ?? [], currentMap);
-            updatedResult = { ...(m.result ?? initialResult(m)), teamA: a, teamB: b };
+            updatedResult = withDerivedScore({
+              ...(m.result ?? initialResult(m)),
+              teamA: a,
+              teamB: b,
+            });
             return { ...m, result: updatedResult };
           });
           return { matches };
@@ -321,6 +345,7 @@ export const useStore = create<State & Actions>()(
               ...base,
               stats: { ...base.stats, [playerId]: { ...prev, ...patch } },
             };
+            updatedResult = withDerivedScore(updatedResult);
             return { ...m, result: updatedResult };
           });
           return { matches };

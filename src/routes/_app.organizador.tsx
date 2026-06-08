@@ -243,7 +243,6 @@ function OrganizadorPanel() {
     setTeams,
     balanceTeams,
     setStat,
-    setScore,
     setMvp,
     closeMatch,
     finalizeMatch,
@@ -1208,42 +1207,16 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                     <div>
                       <h3 className="font-display text-lg uppercase">Resultado y Planilla</h3>
                       <p className="text-xs text-muted-foreground">
-                        Cargá los goles de cada equipo y el desempeño de los pibes.
+                        Cargá los goles de cada jugador y el desempeño de los pibes.
                       </p>
                     </div>
 
-                    {/* Score Editor */}
+                    {/* Score */}
                     <div className="flex items-center justify-center gap-6 rounded-2xl bg-secondary/30 border border-border/50 py-4 px-6 max-w-md mx-auto">
                       <div className="text-center space-y-1">
                         <div className="text-[10px] uppercase font-bold text-lime">Equipo A</div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() =>
-                              !activeMatch.played &&
-                              setScore(
-                                activeMatch.id,
-                                Math.max(0, result.scoreA - 1),
-                                result.scoreB,
-                              )
-                            }
-                            disabled={activeMatch.played}
-                            className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
-                          >
-                            -
-                          </button>
-                          <span className="font-display text-3xl px-2 tabular-nums">
-                            {result.scoreA}
-                          </span>
-                          <button
-                            onClick={() =>
-                              !activeMatch.played &&
-                              setScore(activeMatch.id, result.scoreA + 1, result.scoreB)
-                            }
-                            disabled={activeMatch.played}
-                            className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
-                          >
-                            +
-                          </button>
+                        <div className="font-display text-3xl px-2 tabular-nums">
+                          {result.scoreA}
                         </div>
                       </div>
 
@@ -1251,34 +1224,8 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
 
                       <div className="text-center space-y-1">
                         <div className="text-[10px] uppercase font-bold text-gold">Equipo B</div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() =>
-                              !activeMatch.played &&
-                              setScore(
-                                activeMatch.id,
-                                result.scoreA,
-                                Math.max(0, result.scoreB - 1),
-                              )
-                            }
-                            disabled={activeMatch.played}
-                            className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
-                          >
-                            -
-                          </button>
-                          <span className="font-display text-3xl px-2 tabular-nums">
-                            {result.scoreB}
-                          </span>
-                          <button
-                            onClick={() =>
-                              !activeMatch.played &&
-                              setScore(activeMatch.id, result.scoreA, result.scoreB + 1)
-                            }
-                            disabled={activeMatch.played}
-                            className="size-8 rounded bg-secondary flex items-center justify-center text-sm font-bold hover:bg-border transition disabled:opacity-40"
-                          >
-                            +
-                          </button>
+                        <div className="font-display text-3xl px-2 tabular-nums">
+                          {result.scoreB}
                         </div>
                       </div>
                     </div>
