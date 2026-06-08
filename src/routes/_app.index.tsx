@@ -99,25 +99,37 @@ function Home() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 md:px-6 space-y-10">
-      <section className="relative overflow-hidden rounded-[36px] mt-4 md:mt-8 border border-border/40 pitch-lines">
-        <div className="absolute inset-0 bg-gradient-to-br from-background/40 via-background/80 to-background" />
-        <div className="absolute -right-20 -top-20 size-72 rounded-full bg-lime/10 blur-3xl" />
-        <div className="absolute -left-10 -bottom-20 size-64 rounded-full bg-gold/5 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[36px] mt-4 md:mt-8 border border-lime/15 shadow-2xl">
+        {/* Foto de cancha de fondo */}
+        <div
+          className="absolute inset-0 bg-cover bg-center scale-105"
+          style={{ backgroundImage: `url(${import.meta.env.BASE_URL}hero-pitch.jpg)` }}
+        />
+        {/* Overlay oscuro para legibilidad (más denso abajo a la izq, donde va el texto) */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-background via-background/92 to-background/55" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-transparent to-background" />
+        {/* Haz de reflector + glows */}
+        <div className="absolute inset-0 stadium-beam opacity-60" />
+        <div className="absolute -right-16 -top-16 size-80 rounded-full bg-lime/15 blur-3xl animate-float-glow" />
+        <div className="absolute -left-10 bottom-0 size-64 rounded-full bg-gold/10 blur-3xl" />
+        {/* Grano premium */}
+        <div className="absolute inset-0 grain-overlay opacity-[0.07] mix-blend-overlay pointer-events-none" />
 
-        <div className="relative px-6 md:px-10 py-8 md:py-12">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-lime/40 bg-lime/10 px-3 py-1 text-xs font-semibold text-lime">
+        <div className="relative px-6 md:px-10 py-10 md:py-16">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-lime/40 bg-lime/15 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-lime shadow-glow">
             <Zap className="size-3 text-lime animate-pulse" /> Domingos de Futbol y Porro
           </span>
-          <h1 className="mt-4 font-display text-5xl md:text-7xl leading-[0.95] uppercase max-w-2xl">
-            Futbol para siempre <span className="text-lime">un club de amigos</span>
+          <h1 className="mt-5 font-display text-5xl md:text-7xl leading-[0.92] uppercase max-w-2xl hero-title-shadow">
+            Futbol para siempre{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime to-emerald-300">
+              un club de amigos
+            </span>
           </h1>
-          <p className="mt-4 max-w-lg text-sm md:text-base text-muted-foreground leading-relaxed">
+          <p className="mt-4 max-w-lg text-sm md:text-base text-foreground/80 leading-relaxed hero-title-shadow">
             Cultivo propio y responsable. Anotate al próximo partido, mirá quién juega y seguí el
             ranking del grupo.
           </p>
-          <p className="mt-2 text-xs text-muted-foreground/50 italic">
-            Un club, una familia, un porro 🌿
-          </p>
+          <p className="mt-2 text-xs text-lime/60 italic">Un club, una familia, un porro 🌿</p>
 
           <div className="mt-8 grid gap-6 md:grid-cols-[1.5fr_1fr] max-w-4xl">
             {next ? (
@@ -298,30 +310,18 @@ function Home() {
       )}
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Stat
-          label="Partidos jugados"
-          value={String(playedMatchesCount)}
-          icon="⚽"
-          color="border-lime/20 hover:border-lime/50 hover:shadow-neon-glow"
-        />
-        <Stat
-          label="Jugadores activos"
-          value={String(activePlayersCount)}
-          icon="👥"
-          color="border-blue-500/20 hover:border-blue-500/50 hover:shadow-[0_0_15px_-3px_rgba(59,130,246,0.2)]"
-        />
-        <Stat
-          label="Goles esta temporada"
-          value={String(totalGoals)}
-          icon="🔥"
-          color="border-gold/20 hover:border-gold/50 hover:shadow-gold-glow"
-        />
+        <Stat label="Partidos jugados" value={String(playedMatchesCount)} icon="⚽" accent="lime" />
+        <Stat label="Jugadores activos" value={String(activePlayersCount)} icon="👥" accent="blue" />
+        <Stat label="Goles esta temporada" value={String(totalGoals)} icon="🔥" accent="gold" />
       </section>
 
       {upcomingByDate.length > 0 && (
         <section>
           <div className="flex items-end justify-between mb-4">
-            <h2 className="font-display text-3xl uppercase tracking-wider">Próximos partidos</h2>
+            <h2 className="font-display text-3xl uppercase tracking-wider flex items-center gap-3">
+              <span className="h-7 w-1.5 rounded-full bg-gradient-to-b from-lime to-lime/30" />
+              Próximos partidos
+            </h2>
             <Link
               to="/partidos"
               className="text-xs font-semibold text-lime hover:underline uppercase"
@@ -630,29 +630,62 @@ function Stat({
   label,
   value,
   icon,
-  color,
+  accent,
 }: {
   label: string;
   value: string;
   icon: string;
-  color: string;
+  accent: "lime" | "blue" | "gold";
 }) {
+  const styles = {
+    lime: {
+      ring: "border-lime/25 hover:border-lime/60 hover:shadow-neon-glow",
+      chip: "bg-lime/15 border-lime/30 text-lime",
+      num: "text-lime",
+      bar: "from-lime/60 to-lime/0",
+    },
+    blue: {
+      ring: "border-blue-500/25 hover:border-blue-500/60 hover:shadow-[0_0_18px_-4px_rgba(59,130,246,0.35)]",
+      chip: "bg-blue-500/15 border-blue-500/30 text-blue-300",
+      num: "text-blue-300",
+      bar: "from-blue-500/60 to-blue-500/0",
+    },
+    gold: {
+      ring: "border-gold/25 hover:border-gold/60 hover:shadow-gold-glow",
+      chip: "bg-gold/15 border-gold/30 text-gold",
+      num: "text-gold",
+      bar: "from-gold/60 to-gold/0",
+    },
+  }[accent];
+
   return (
     <div
       className={cn(
-        "rounded-2xl border bg-card/45 backdrop-blur px-5 py-4 flex items-center justify-between transition-all duration-300 group hover:translate-y-[-2px]",
-        color,
+        "relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur px-5 py-5 flex items-center justify-between transition-all duration-300 group hover:-translate-y-1",
+        styles.ring,
       )}
     >
+      {/* Barra de acento superior */}
+      <div className={cn("absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r", styles.bar)} />
       <div className="space-y-1">
-        <div className="font-display text-4xl tabular-nums leading-none tracking-wide text-foreground group-hover:scale-105 transition duration-300">
+        <div
+          className={cn(
+            "font-display text-5xl tabular-nums leading-none tracking-wide transition duration-300 group-hover:scale-105 origin-left",
+            styles.num,
+          )}
+        >
           {value}
         </div>
         <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
           {label}
         </div>
       </div>
-      <span className="text-2xl opacity-60 group-hover:opacity-100 group-hover:scale-110 transition duration-300 select-none">
+      <span
+        className={cn(
+          "grid place-items-center size-12 rounded-xl border text-2xl select-none transition duration-300 group-hover:scale-110",
+          styles.chip,
+        )}
+      >
         {icon}
       </span>
     </div>
