@@ -26,7 +26,6 @@ import {
   anotarse,
   bajarse,
   registrarVoto,
-  confirmarAsistencia,
 } from "@/lib/api/picado.functions";
 import { usePicadoPlayer } from "@/hooks/use-picado-player";
 import { PlayerAvatar } from "@/components/Avatar";
@@ -114,7 +113,7 @@ function DniDialog({
   onConfirm,
 }: {
   open: boolean;
-  mode: "anotarse" | "bajarse" | "votar" | "confirmar";
+  mode: "anotarse" | "bajarse" | "votar";
   onClose: () => void;
   onConfirm: (dni: string) => Promise<void>;
 }) {
@@ -144,25 +143,19 @@ function DniDialog({
       ? "Anotarme"
       : mode === "bajarse"
         ? "Bajarme"
-        : mode === "confirmar"
-          ? "Confirmar asistencia"
-          : "Identificarme para Votar";
+        : "Identificarme para Votar";
   const modeDesc =
     mode === "anotarse"
       ? "Ingresá tu DNI para confirmar tu lugar."
       : mode === "bajarse"
         ? "Ingresá tu DNI para bajarte del partido."
-        : mode === "confirmar"
-          ? "Ingresá tu DNI para confirmar que vas a ir al partido."
-          : "Ingresá tu DNI para identificarte y votar MVP y Gol de la Fecha.";
+        : "Ingresá tu DNI para identificarte y votar MVP y Gol de la Fecha.";
   const btnLabel =
     mode === "anotarse"
       ? "¡Anotarme!"
       : mode === "bajarse"
         ? "Confirmar baja"
-        : mode === "confirmar"
-          ? "¡Confirmo que voy!"
-          : "Continuar →";
+        : "Continuar →";
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
@@ -862,14 +855,6 @@ function PlayerRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-sm font-medium truncate">{displayName(p)}</span>
-          {signup.confirmado && (
-            <span
-              className="text-[10px] shrink-0"
-              title="Confirmó asistencia"
-            >
-              ✅
-            </span>
-          )}
           {isMe && (
             <span className="text-[10px] uppercase tracking-wider font-bold text-lime shrink-0">
               vos
@@ -900,13 +885,12 @@ function MatchDetail() {
   // Suscripción Realtime: actualiza las listas en todos los dispositivos
   useMatchRealtime(match.id);
 
-  const [dialog, setDialog] = useState<"anotarse" | "bajarse" | "confirmar" | null>(null);
+  const [dialog, setDialog] = useState<"anotarse" | "bajarse" | null>(null);
 
   // Detectar si el usuario actual está anotado (por player_id guardado en localStorage)
   const myTitular = stored ? titulares.find((s) => s.player_id === stored.player_id) : null;
   const myEspera = stored ? espera.find((s) => s.player_id === stored.player_id) : null;
   const mySignup = myTitular ?? myEspera;
-  const myConfirmado = !!mySignup?.confirmado;
   const isOpen = match.estado === "abierto";
   const isJugado = match.estado === "jugado";
   const isCerrado = match.estado === "cerrado";
@@ -969,23 +953,6 @@ function MatchDetail() {
       await refreshCurrentData();
     } catch (err) {
       toast.error("Error al bajarse: " + errorMessage(err));
-    }
-  }
-
-  async function handleConfirmar(dni: string) {
-    try {
-      const res = await confirmarAsistencia({
-        data: { dni, match_id: match.id, confirmado: !myConfirmado },
-      });
-      if (!res.ok) {
-        toast.error(res.message);
-        return;
-      }
-      toast.success(res.message);
-      setDialog(null);
-      await refreshCurrentData();
-    } catch (err) {
-      toast.error("Error al confirmar asistencia: " + errorMessage(err));
     }
   }
 
@@ -1099,23 +1066,6 @@ function MatchDetail() {
               <Countdown to={match.inscripcion_cierra} label="Cierra inscripción en" />
             )}
           </div>
-
-          {/* Acciones */}
-          {isOpen && mySignup && (
-            <div className="px-6 pt-1 pb-3">
-              <button
-                onClick={() => setDialog("confirmar")}
-                className={cn(
-                  "w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold border transition",
-                  myConfirmado
-                    ? "bg-lime/15 text-lime border-lime/40 hover:bg-lime/25"
-                    : "bg-secondary/60 text-foreground border-border hover:border-lime/40",
-                )}
-              >
-                {myConfirmado ? "✅ Asistencia confirmada — tocá para cancelar" : "Confirmar asistencia"}
-              </button>
-            </div>
-          )}
 
           {isOpen && (
             <div className="px-6 pb-6 flex gap-2">
@@ -1243,9 +1193,7 @@ function MatchDetail() {
         onConfirm={
           dialog === "anotarse"
             ? handleAnotarse
-            : dialog === "confirmar"
-              ? handleConfirmar
-              : handleBajarse
+            : handleBajarse
         }
       />
     </>

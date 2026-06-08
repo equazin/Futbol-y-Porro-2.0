@@ -183,7 +183,7 @@ function Home() {
                 <div className="w-full md:w-60 p-6 bg-secondary/15 flex flex-col justify-between items-center text-center space-y-4 shrink-0 md:border-l md:border-border/10">
                   <div className="w-full space-y-2.5">
                     <div className="flex justify-between items-center text-[10px] text-muted-foreground uppercase font-bold px-1">
-                      <span>Cupo Confirmado</span>
+                      <span>Cupo anotado</span>
                       <span className="font-mono text-foreground font-black">
                         {next.confirmed.length}/{next.capacity}
                       </span>
@@ -201,7 +201,7 @@ function Home() {
                         <>
                           Faltan{" "}
                           <span className="font-bold text-lime tabular-nums">{remaining}</span>{" "}
-                          confirmados
+                          anotados
                         </>
                       ) : (
                         <span className="text-gold font-bold">¡Cupo Completo!</span>
@@ -270,7 +270,7 @@ function Home() {
                   <div className="flex -space-x-2.5 overflow-hidden">
                     {next.confirmed.length === 0 ? (
                       <span className="text-xs text-muted-foreground/50">
-                        Nadie confirmado todavía
+                        Nadie anotado todavía
                       </span>
                     ) : (
                       next.confirmed.slice(-6).map((id) => {

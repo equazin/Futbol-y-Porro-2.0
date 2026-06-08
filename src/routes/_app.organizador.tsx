@@ -899,12 +899,6 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                       {getFormatDate(activeMatch.date)} a las {(activeMatch.hora ?? "").slice(0, 5)}{" "}
                       hs
                     </p>
-                    {!activeMatch.played && (activeMatch.confirmed?.length ?? 0) > 0 && (
-                      <p className="text-[11px] text-lime mt-1 font-semibold">
-                        ✅ {activeMatch.attendanceConfirmed?.length ?? 0}/
-                        {activeMatch.confirmed?.length ?? 0} confirmaron asistencia
-                      </p>
-                    )}
                   </div>
 
                   {/* Botones de Finalización */}
