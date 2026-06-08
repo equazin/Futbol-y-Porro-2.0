@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { useEffect } from "react";
 import { useRouter } from "@tanstack/react-router";
+import { useStore } from "@/store/match-store";
 
 // Singleton del cliente browser para Realtime.
 // Inicialización lazy — solo se instancia la primera vez que corre en el browser.
@@ -29,16 +30,17 @@ function getBrowserClient() {
 // Suscribe a cambios en picado_signups para un partido específico.
 // Cuando alguien se anota o se baja, invalida el loader del router
 // para que todos los dispositivos vean la lista actualizada sin recargar.
-export function useMatchRealtime(matchId: string, onChange?: () => void) {
+export function useMatchRealtime(matchId: string, onChange?: () => void | Promise<void>) {
   const router = useRouter();
+  const loadFromDatabase = useStore((s) => s.loadFromDatabase);
 
   useEffect(() => {
     if (!matchId) return;
 
     const sb = getBrowserClient();
     const refresh = () => {
-      onChange?.();
-      void router.invalidate();
+      const refreshStore = onChange ?? loadFromDatabase;
+      void Promise.all([Promise.resolve(refreshStore()), router.invalidate()]);
     };
 
     const channel = sb
@@ -68,5 +70,5 @@ export function useMatchRealtime(matchId: string, onChange?: () => void) {
     return () => {
       void sb.removeChannel(channel);
     };
-  }, [matchId, onChange, router]);
+  }, [loadFromDatabase, matchId, onChange, router]);
 }

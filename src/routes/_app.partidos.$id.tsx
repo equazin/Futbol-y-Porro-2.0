@@ -382,7 +382,8 @@ function VotingSection({
 }) {
   const { stored, remember } = usePicadoPlayer();
   const router = useRouter();
-  const { players } = useStore();
+  const players = useStore((s) => s.players);
+  const loadFromDatabase = useStore((s) => s.loadFromDatabase);
   const playerMap = Object.fromEntries(players.map((p) => [p.id, p]));
 
   const [step, setStep] = useState<"auth" | "vote" | "done">("auth");
@@ -582,12 +583,12 @@ function VotingSection({
             setLoading={setLoading}
             result={result}
             voterPlayerId={stored?.player_id ?? null}
-            onSuccess={(res) => {
+            onSuccess={async (res) => {
               if (res.player_id && res.nombre) {
                 remember({ ...(stored ?? {}), player_id: res.player_id, nombre: res.nombre });
               }
               setStep("done");
-              void router.invalidate();
+              await Promise.all([router.invalidate(), loadFromDatabase()]);
             }}
           />
         ) : (
@@ -629,7 +630,7 @@ function VoteForm({
   matchId: string;
   loading: boolean;
   setLoading: (v: boolean) => void;
-  onSuccess: (res: VotoResult) => void;
+  onSuccess: (res: VotoResult) => void | Promise<void>;
   result: MatchResult | null | undefined;
   voterPlayerId: string | null;
 }) {
@@ -679,7 +680,7 @@ function VoteForm({
         return;
       }
       toast.success("\u00a1Voto registrado!", { description: res.message });
-      onSuccess(res);
+      await onSuccess(res);
     } catch (err) {
       toast.error("Error al votar: " + errorMessage(err));
     } finally {
@@ -891,6 +892,7 @@ function MatchDetail() {
   const { match, titulares, espera, result } = Route.useLoaderData() as MatchDetailData;
   const router = useRouter();
   const { stored, remember } = usePicadoPlayer();
+  const loadFromDatabase = useStore((s) => s.loadFromDatabase);
 
   // Suscripción Realtime: actualiza las listas en todos los dispositivos
   useMatchRealtime(match.id);
@@ -918,6 +920,10 @@ function MatchDetail() {
   // Combine all participants for voting
   const allParticipants = [...titulares];
 
+  async function refreshCurrentData() {
+    await Promise.all([router.invalidate(), loadFromDatabase()]);
+  }
+
   async function handleAnotarse(dni: string) {
     try {
       const result = await anotarse({ data: { dni, match_id: match.id } });
@@ -940,7 +946,7 @@ function MatchDetail() {
       });
 
       setDialog(null);
-      await router.invalidate();
+      await refreshCurrentData();
     } catch (err) {
       toast.error("Error al anotarse: " + errorMessage(err));
     }
@@ -957,7 +963,7 @@ function MatchDetail() {
 
       toast.info("Te bajaste del partido.");
       setDialog(null);
-      await router.invalidate();
+      await refreshCurrentData();
     } catch (err) {
       toast.error("Error al bajarse: " + errorMessage(err));
     }
@@ -974,7 +980,7 @@ function MatchDetail() {
       }
       toast.success(res.message);
       setDialog(null);
-      await router.invalidate();
+      await refreshCurrentData();
     } catch (err) {
       toast.error("Error al confirmar asistencia: " + errorMessage(err));
     }
