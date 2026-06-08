@@ -9,6 +9,17 @@ export type PicadoGroup = {
   descripcion: string | null;
 };
 
+// Movimiento del fondo común (libro de caja).
+export type FondoMovimiento = {
+  id: string;
+  group_id?: string;
+  tipo: "ingreso" | "egreso";
+  concepto: string;
+  monto: number; // siempre positivo; el signo lo da `tipo`
+  fecha: string; // ISO date "2026-06-07"
+  created_at?: string;
+};
+
 // Regla de recurrencia: genera partidos automáticamente cada semana.
 export type PicadoRecurrence = {
   id: string;

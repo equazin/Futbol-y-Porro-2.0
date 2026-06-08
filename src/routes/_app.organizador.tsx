@@ -34,6 +34,7 @@ import { PlayerAvatar } from "@/components/Avatar";
 import { TeamCard } from "@/components/organizador/TeamCard";
 import { StatsTableRow } from "@/components/organizador/StatsTableRow";
 import { RecurrencesTab } from "@/components/organizador/RecurrencesTab";
+import { FondoTab } from "@/components/organizador/FondoTab";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Player } from "@/lib/mock-data";
@@ -229,7 +230,7 @@ function OrganizadorRoute() {
   return <OrganizadorPanel />;
 }
 
-type TabKey = "partidos" | "jugadores" | "reglas" | "recurrencias";
+type TabKey = "partidos" | "jugadores" | "reglas" | "recurrencias" | "fondo";
 
 function OrganizadorPanel() {
   const {
@@ -262,7 +263,7 @@ function OrganizadorPanel() {
   const isGeneralAdmin = adminRole === "general";
   const canManageTeams = adminRole === "general" || adminRole === "equipos";
   const availableTabs: TabKey[] = isGeneralAdmin
-    ? ["partidos", "jugadores", "reglas", "recurrencias"]
+    ? ["partidos", "jugadores", "reglas", "recurrencias", "fondo"]
     : ["partidos"];
 
   const [activeTab, setActiveTab] = useState<TabKey>("partidos");
@@ -776,7 +777,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                 ? "Plantel"
                 : t === "reglas"
                   ? "Reglas"
-                  : "Recurrentes"}
+                  : t === "recurrencias"
+                    ? "Recurrentes"
+                    : "Fondo"}
           </button>
         ))}
       </div>
@@ -1561,6 +1564,9 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
 
       {/* CONTENIDO TAB 4: RECURRENCIAS */}
       {isGeneralAdmin && activeTab === "recurrencias" && <RecurrencesTab />}
+
+      {/* CONTENIDO TAB 5: FONDO COMÚN */}
+      {isGeneralAdmin && activeTab === "fondo" && <FondoTab />}
 
       {/* ── Modal Crear / Editar Jugador ── */}
       {isGeneralAdmin && showPlayerModal && (

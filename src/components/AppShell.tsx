@@ -9,6 +9,7 @@ import {
   Settings2,
   Lock,
   Unlock,
+  Wallet,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const desktopNav = [
   { to: "/partidos", label: "Partidos" },
   { to: "/jugadores", label: "Jugadores" },
   { to: "/ranking", label: "Ranking" },
+  { to: "/fondo-comun", label: "Fondo" },
   { to: "/organizador", label: "Organizador" },
 ] as const;
 
@@ -125,6 +127,13 @@ export function AppShell() {
                   <Award className="size-3.5" /> Votar
                 </Link>
               )}
+              <Link
+                to="/fondo-comun"
+                className="inline-flex items-center justify-center rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground transition"
+                title="Fondo común"
+              >
+                <Wallet className="size-4" />
+              </Link>
               <Link
                 to="/jugadores"
                 className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground"

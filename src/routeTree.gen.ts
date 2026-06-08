@@ -15,6 +15,7 @@ import { Route as AppRankingRouteImport } from './routes/_app.ranking'
 import { Route as AppPerfilRouteImport } from './routes/_app.perfil'
 import { Route as AppOrganizadorRouteImport } from './routes/_app.organizador'
 import { Route as AppJugadoresRouteImport } from './routes/_app.jugadores'
+import { Route as AppFondoComunRouteImport } from './routes/_app.fondo-comun'
 import { Route as AppPartidosIndexRouteImport } from './routes/_app.partidos.index'
 import { Route as AppPartidosIdRouteImport } from './routes/_app.partidos.$id'
 
@@ -47,6 +48,11 @@ const AppJugadoresRoute = AppJugadoresRouteImport.update({
   path: '/jugadores',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFondoComunRoute = AppFondoComunRouteImport.update({
+  id: '/fondo-comun',
+  path: '/fondo-comun',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPartidosIndexRoute = AppPartidosIndexRouteImport.update({
   id: '/partidos/',
   path: '/partidos/',
@@ -60,6 +66,7 @@ const AppPartidosIdRoute = AppPartidosIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/fondo-comun': typeof AppFondoComunRoute
   '/jugadores': typeof AppJugadoresRoute
   '/organizador': typeof AppOrganizadorRoute
   '/perfil': typeof AppPerfilRoute
@@ -68,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/partidos/': typeof AppPartidosIndexRoute
 }
 export interface FileRoutesByTo {
+  '/fondo-comun': typeof AppFondoComunRoute
   '/jugadores': typeof AppJugadoresRoute
   '/organizador': typeof AppOrganizadorRoute
   '/perfil': typeof AppPerfilRoute
@@ -79,6 +87,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/_app/fondo-comun': typeof AppFondoComunRoute
   '/_app/jugadores': typeof AppJugadoresRoute
   '/_app/organizador': typeof AppOrganizadorRoute
   '/_app/perfil': typeof AppPerfilRoute
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/fondo-comun'
     | '/jugadores'
     | '/organizador'
     | '/perfil'
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/partidos/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/fondo-comun'
     | '/jugadores'
     | '/organizador'
     | '/perfil'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/_app/fondo-comun'
     | '/_app/jugadores'
     | '/_app/organizador'
     | '/_app/perfil'
@@ -166,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppJugadoresRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/fondo-comun': {
+      id: '/_app/fondo-comun'
+      path: '/fondo-comun'
+      fullPath: '/fondo-comun'
+      preLoaderRoute: typeof AppFondoComunRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/partidos/': {
       id: '/_app/partidos/'
       path: '/partidos'
@@ -184,6 +203,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppFondoComunRoute: typeof AppFondoComunRoute
   AppJugadoresRoute: typeof AppJugadoresRoute
   AppOrganizadorRoute: typeof AppOrganizadorRoute
   AppPerfilRoute: typeof AppPerfilRoute
@@ -194,6 +214,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppFondoComunRoute: AppFondoComunRoute,
   AppJugadoresRoute: AppJugadoresRoute,
   AppOrganizadorRoute: AppOrganizadorRoute,
   AppPerfilRoute: AppPerfilRoute,

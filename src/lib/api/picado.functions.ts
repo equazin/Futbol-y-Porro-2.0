@@ -7,6 +7,7 @@ import type {
   IdentificarJugadorResult,
   PicadoAdminRole,
   PicadoRecurrence,
+  FondoMovimiento,
 } from "@/types/picado";
 
 const slug = () => import.meta.env.VITE_GROUP_SLUG || "fyp-fc";
@@ -515,4 +516,50 @@ export const materializeRecurrences = async (): Promise<number> => {
   const { data, error } = await supabase.rpc("picado_materialize_recurrences");
   if (error) throw new Error(error.message);
   return (data as number) ?? 0;
+};
+
+// ── Fondo Común: movimientos del grupo (lectura pública) ──
+export const getFondoMovimientos = async ({ data }: { data: { slug: string } }): Promise<FondoMovimiento[]> => {
+  const { data: group } = await supabase
+    .from("picado_groups")
+    .select("id")
+    .eq("slug", data.slug)
+    .single();
+
+  if (!group) return [];
+
+  const { data: rows, error } = await supabase
+    .from("picado_fondo_movimientos")
+    .select("id, group_id, tipo, concepto, monto, fecha, created_at")
+    .eq("group_id", group.id)
+    .order("fecha", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (rows ?? []).map((r) => ({ ...r, monto: Number(r.monto) })) as FondoMovimiento[];
+};
+
+// ── Admin Mutation: crear/actualizar movimiento del fondo ──
+export const saveFondoMovimiento = async ({ data }: {
+  data: { slug: string; movimiento: Partial<FondoMovimiento> & { id?: string | null } };
+}): Promise<FondoMovimiento> => {
+  const m = data.movimiento;
+  const { data: row, error } = await supabase.rpc("picado_admin_save_movimiento", {
+    p_id: m.id ?? null,
+    p_slug: data.slug,
+    p_tipo: m.tipo,
+    p_concepto: m.concepto,
+    p_monto: m.monto,
+    p_fecha: m.fecha,
+  });
+  if (error) throw new Error(error.message);
+  return row as FondoMovimiento;
+};
+
+// ── Admin Mutation: eliminar movimiento del fondo ─────────
+export const deleteFondoMovimiento = async ({ data }: { data: { id: string } }): Promise<void> => {
+  const { error } = await supabase.rpc("picado_admin_delete_movimiento", {
+    p_id: data.id,
+  });
+  if (error) throw new Error(error.message);
 };
