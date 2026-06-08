@@ -14,12 +14,14 @@ export type Player = {
 };
 
 export type MatchStatus = "open" | "full" | "closed";
+export type MatchType = "oficial" | "fecha_fifa";
 
 export type Match = {
   id: string;
   date: string; // ISO
   venue: string;
   format: "5v5" | "7v7" | "8v8";
+  matchType?: MatchType;
   capacity: number;
   confirmed: string[]; // player ids
   waitlist: string[];

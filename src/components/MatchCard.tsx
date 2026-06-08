@@ -43,14 +43,20 @@ export function MatchCard({ match, featured = false }: { match: Match; featured?
         <span
           className={cn(
             "rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider",
-            remaining === 0
+            match.matchType === "fecha_fifa"
+              ? "bg-gold/20 text-gold"
+              : remaining === 0
               ? "bg-gold/20 text-gold"
               : remaining <= 3
                 ? "bg-lime/20 text-lime"
                 : "bg-secondary text-muted-foreground",
           )}
         >
-          {remaining === 0 ? "Completo" : `${remaining} lugar${remaining === 1 ? "" : "es"}`}
+          {match.matchType === "fecha_fifa"
+            ? "Fecha FIFA"
+            : remaining === 0
+              ? "Completo"
+              : `${remaining} lugar${remaining === 1 ? "" : "es"}`}
         </span>
       </div>
 

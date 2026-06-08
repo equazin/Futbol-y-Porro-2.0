@@ -1004,6 +1004,11 @@ function MatchDetail() {
                 <span className="rounded-md bg-secondary px-2 py-0.5 text-xs font-semibold text-foreground">
                   {match.formato}
                 </span>
+                {match.match_type === "fecha_fifa" && (
+                  <span className="rounded-md bg-gold/15 px-2 py-0.5 text-xs font-semibold text-gold">
+                    Fecha FIFA
+                  </span>
+                )}
               </div>
             </div>
           </div>

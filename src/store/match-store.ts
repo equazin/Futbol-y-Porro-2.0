@@ -788,6 +788,7 @@ export function computeRanking(
   // 1. Calcular estadísticas básicas y ausencias
   for (const m of matches) {
     if (!m.played || !m.result) continue;
+    if (m.matchType === "fecha_fifa") continue;
     const { scoreA, scoreB, teamA, teamB, stats } = m.result;
     const aWon = scoreA > scoreB;
     const bWon = scoreB > scoreA;
@@ -837,7 +838,7 @@ export function computeRanking(
 
   // 2. Calcular rachas goleadoras consecutivas
   const sortedMatches = [...matches]
-    .filter((m) => m.played && m.result)
+    .filter((m) => m.played && m.result && m.matchType !== "fecha_fifa")
     .sort((x, y) => new Date(x.date).getTime() - new Date(y.date).getTime());
 
   for (const p of storePlayers) {

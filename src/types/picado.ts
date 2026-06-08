@@ -1,6 +1,7 @@
 export type PicadoEstado = "programado" | "abierto" | "cerrado" | "jugado" | "cancelado";
 export type SignupEstado = "titular" | "espera" | "baja";
 export type PicadoAdminRole = "general" | "equipos" | "fondo";
+export type PicadoMatchType = "oficial" | "fecha_fifa";
 
 export type PicadoGroup = {
   id: string;
@@ -28,6 +29,7 @@ export type PicadoRecurrence = {
   hora: string; // "20:00:00"
   sede: string;
   formato: string;
+  match_type: PicadoMatchType;
   cupo_max: number;
   abre_dias_antes: number;
   cierra_horas_antes: number;
@@ -55,6 +57,7 @@ export type PicadoMatch = {
   hora: string;
   sede: string;
   formato: string;
+  match_type?: PicadoMatchType | null;
   cupo_max: number;
   estado: PicadoEstado;
   inscripcion_abre: string | null;

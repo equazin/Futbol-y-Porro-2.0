@@ -7,6 +7,7 @@ import type {
   IdentificarJugadorResult,
   PicadoAdminRole,
   PicadoRecurrence,
+  PicadoMatchType,
   FondoMovimiento,
 } from "@/types/picado";
 
@@ -412,6 +413,7 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
       date: `${m.fecha}T${m.hora}`,
       venue: m.sede,
       format: m.formato,
+      matchType: (m.match_type as PicadoMatchType | null) ?? "oficial",
       capacity: m.cupo_max,
       confirmed,
       waitlist,
@@ -475,6 +477,7 @@ export const saveRecurrence = async ({ data }: {
     p_hora: r.hora,
     p_sede: r.sede,
     p_formato: r.formato ?? "7v7",
+    p_match_type: r.match_type ?? "oficial",
     p_cupo_max: r.cupo_max ?? 14,
     p_abre_dias_antes: r.abre_dias_antes ?? 7,
     p_cierra_horas_antes: r.cierra_horas_antes ?? 2,

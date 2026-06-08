@@ -22,6 +22,7 @@ const emptyForm: FormState = {
   hora: "20:00",
   sede: "",
   formato: "7v7",
+  match_type: "oficial",
   cupo_max: 14,
   abre_dias_antes: 7,
   cierra_horas_antes: 2,
@@ -147,7 +148,8 @@ export function RecurrencesTab() {
                   {DIAS[r.dia_semana]} · {r.hora.slice(0, 5)} hs
                 </div>
                 <div className="text-[11px] text-muted-foreground truncate">
-                  {r.sede} · {r.formato} · cupo {r.cupo_max}
+                  {r.sede} · {r.formato} ·{" "}
+                  {r.match_type === "fecha_fifa" ? "Fecha FIFA" : "Oficial"} · cupo {r.cupo_max}
                   {!r.activa && " · (inactiva)"}
                 </div>
               </div>
@@ -268,6 +270,19 @@ function RecurrenceModal({
                 <option value="8v8">8v8</option>
               </select>
             </Field>
+            <Field label="Tipo de partido">
+              <select
+                value={form.match_type ?? "oficial"}
+                onChange={(e) => set("match_type", e.target.value as FormState["match_type"])}
+                className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-lime"
+              >
+                <option value="oficial">Oficial</option>
+                <option value="fecha_fifa">Fecha FIFA</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Cupo máximo">
               <input
                 type="number"
