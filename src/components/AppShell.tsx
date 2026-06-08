@@ -106,12 +106,6 @@ export function AppShell() {
                   <Lock className="size-3" /> Admin Login
                 </Link>
               )}
-              <Link
-                to="/organizador"
-                className="inline-flex items-center gap-2 rounded-md bg-lime px-4 py-2 text-sm font-semibold text-lime-foreground hover:brightness-110 transition animate-pulse-subtle"
-              >
-                <Settings2 className="size-4" /> Organizar partido
-              </Link>
             </div>
           </div>
         </header>
