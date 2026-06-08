@@ -426,14 +426,16 @@ export const useStore = create<State & Actions>()(
         }
 
         const votes: MatchVote[] = notasJson.votes ?? [];
-        const participantIds = new Set(match.confirmed ?? []);
         const winnerIds = new Set(getWinnerTeam(notasJson));
+        const goalScorerIds = new Set(
+          (match.confirmed ?? []).filter((pid) => (notasJson.stats?.[pid]?.goals ?? 0) > 0),
+        );
         const topMvp = topVote(votes, "mvp_vote", {
           eligibleIds: winnerIds,
           rejectSelfVote: true,
         });
         const topGol = topVote(votes, "gol_vote", {
-          eligibleIds: participantIds,
+          eligibleIds: goalScorerIds,
           rejectSelfVote: true,
         });
 

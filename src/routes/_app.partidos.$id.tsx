@@ -651,9 +651,10 @@ function VoteForm({
     return winnerTeamIds.includes(s.player_id); // only winners
   });
 
-  const golCandidates = participants.filter(
-    (s) => s.player_id !== voterPlayerId, // no self-vote
-  );
+  const golCandidates = participants.filter((s) => {
+    if (s.player_id === voterPlayerId) return false; // no self-vote
+    return (result?.stats?.[s.player_id]?.goals ?? 0) > 0; // only scorers
+  });
 
   async function handleVoteSubmit() {
     if (!mvpVote || !golVote) {
@@ -703,7 +704,7 @@ function VoteForm({
           <Trophy className="size-3.5 shrink-0" />
           <span>
             El MVP solo puede ser del <strong>equipo ganador</strong>. Para Gol de la Fecha,
-            cualquier jugador.
+            solo jugadores que hicieron gol.
           </span>
         </div>
       )}
@@ -726,7 +727,9 @@ function VoteForm({
           )}
         </div>
         {mvpCandidates.length === 0 ? (
-          <p className="text-xs text-muted-foreground px-1">No hay candidatos disponibles.</p>
+          <p className="text-xs text-muted-foreground px-1">
+            No hay jugadores con goles cargados disponibles.
+          </p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {mvpCandidates.map((s) => (

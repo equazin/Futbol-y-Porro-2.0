@@ -89,6 +89,7 @@ function buildVotingSummary(match: StoredMatch | undefined, playerMap: Record<st
       : result.scoreB > result.scoreA
         ? result.teamB
         : [];
+  const goalScorerIds = participantIds.filter((id) => (result.stats?.[id]?.goals ?? 0) > 0);
 
   const nameFor = (id: string) => playerMap[id]?.nickname ?? playerMap[id]?.name ?? "Desconocido";
 
@@ -124,7 +125,7 @@ function buildVotingSummary(match: StoredMatch | undefined, playerMap: Record<st
     missing: missingIds.map((id) => ({ id, name: nameFor(id) })),
     remainingVotes,
     mvpRows: rowsFor("mvp_vote", winnerTeamIds),
-    golRows: rowsFor("gol_vote"),
+    golRows: rowsFor("gol_vote", goalScorerIds),
     hasWinnerTeam: winnerTeamIds.length > 0,
   };
 }
