@@ -55,11 +55,23 @@ export function DniAuthGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 md:px-6">
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+      {/* Foto de cancha de fondo + overlays (mismo lenguaje que el home) */}
+      <div
+        className="absolute inset-0 bg-cover bg-center scale-105"
+        style={{ backgroundImage: `url(${import.meta.env.BASE_URL}hero-pitch.jpg)` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-tr from-background via-background/94 to-background/60" />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-transparent to-background" />
+      <div className="absolute inset-0 stadium-beam opacity-50" />
+      <div className="absolute -right-16 -top-16 size-80 rounded-full bg-lime/15 blur-3xl animate-float-glow" />
+      <div className="absolute -left-10 bottom-0 size-64 rounded-full bg-gold/10 blur-3xl" />
+      <div className="absolute inset-0 grain-overlay opacity-[0.07] mix-blend-overlay pointer-events-none" />
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 md:px-6">
         <header className="flex items-center justify-between">
           <Logo />
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-lime/30 bg-lime/10 px-2.5 py-1 text-xs font-semibold text-lime">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-lime/30 bg-lime/10 backdrop-blur-sm px-2.5 py-1 text-xs font-semibold text-lime shadow-glow">
             <ShieldCheck className="size-3.5" />
             Acceso jugadores
           </span>
@@ -68,15 +80,18 @@ export function DniAuthGate({ children }: { children: ReactNode }) {
         <main className="flex flex-1 items-center justify-center py-10">
           <section className="grid w-full gap-6 md:grid-cols-[1.05fr_0.95fr] md:items-center">
             <div className="space-y-5">
-              <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-gold">
+              <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 backdrop-blur-sm px-3 py-1 text-xs font-bold uppercase tracking-wider text-gold">
                 <BadgeCheck className="size-3.5" />
                 Verificacion obligatoria
               </div>
               <div>
-                <h1 className="font-display text-5xl uppercase leading-none md:text-7xl">
-                  Entra con tu <span className="text-lime">DNI</span>
+                <h1 className="font-display text-5xl uppercase leading-none md:text-7xl hero-title-shadow">
+                  Entra con tu{" "}
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime to-emerald-300">
+                    DNI
+                  </span>
                 </h1>
-                <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+                <p className="mt-4 max-w-xl text-sm leading-relaxed text-foreground/80 md:text-base hero-title-shadow">
                   Usamos tu DNI solo para encontrar tu ficha de jugador. No se guarda en este
                   dispositivo.
                 </p>
@@ -90,7 +105,7 @@ export function DniAuthGate({ children }: { children: ReactNode }) {
 
             <form
               onSubmit={handleSubmit}
-              className="rounded-3xl border border-border/60 bg-card p-5 shadow-2xl md:p-6"
+              className="rounded-3xl border border-lime/20 bg-card/80 backdrop-blur-md p-5 shadow-2xl md:p-6"
             >
               <div className="mb-5">
                 <h2 className="font-display text-3xl uppercase">Verificar jugador</h2>
@@ -152,7 +167,8 @@ export function DniAuthGate({ children }: { children: ReactNode }) {
 
 function GateStat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card/50 px-3 py-3">
+    <div className="relative overflow-hidden rounded-2xl border border-lime/15 bg-card/60 backdrop-blur-sm px-3 py-3 transition hover:border-lime/40">
+      <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-lime/60 to-lime/0" />
       <div className="font-display text-xl uppercase leading-none text-foreground">{value}</div>
       <div className="mt-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
         {label}
