@@ -38,6 +38,7 @@ import { FondoTab } from "@/components/organizador/FondoTab";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Player } from "@/lib/mock-data";
+import { identificarJugador } from "@/lib/api/picado.functions";
 
 export const Route = createFileRoute("/_app/organizador")({
   component: OrganizadorRoute,
@@ -140,8 +141,17 @@ function OrganizadorRoute() {
     loginAdminByPlayer,
     logoutAdmin,
   } = useStore();
-  const { stored } = usePicadoPlayer();
+  const { stored, remember } = usePicadoPlayer();
   const [pin, setPin] = useState("");
+  const [adminDni, setAdminDni] = useState("");
+  const [isCheckingDni, setIsCheckingDni] = useState(false);
+
+  const roleLabel = (role: AdminRole) =>
+    role === "general"
+      ? "admin general"
+      : role === "fondo"
+        ? "admin fondo"
+        : "admin equipos";
 
   useEffect(() => {
     if (stored?.admin_role) {
@@ -170,7 +180,7 @@ function OrganizadorRoute() {
     stored?.player_id,
   ]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handlePinLogin = (e: React.FormEvent) => {
     e.preventDefault();
     const success = loginAdmin(pin);
     if (success) {
@@ -183,6 +193,46 @@ function OrganizadorRoute() {
       setPin("");
     } else {
       toast.error("PIN incorrecto. Intentá de nuevo.");
+    }
+  };
+
+  const handleDniLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const dni = adminDni.replace(/\D/g, "");
+    if (dni.length < 7 || dni.length > 9) {
+      toast.error("Ingresa un DNI valido.");
+      return;
+    }
+
+    setIsCheckingDni(true);
+    try {
+      const result = await identificarJugador({ data: { dni } });
+      if (!result.ok || !result.player_id) {
+        toast.error(result.message || "DNI no reconocido.");
+        return;
+      }
+
+      if (!result.admin_role) {
+        toast.error("Ese DNI no tiene permisos para ingresar al panel admin.");
+        return;
+      }
+
+      remember({
+        player_id: result.player_id,
+        nombre: result.nombre ?? "Jugador",
+        apodo: result.apodo ?? null,
+        posicion: result.posicion ?? null,
+        foto_url: result.foto_url ?? null,
+        elo: result.elo,
+        admin_role: result.admin_role,
+      });
+      loginAdminByPlayer(result.admin_role, result.player_id);
+      setAdminDni("");
+      toast.success(`Sesion de ${roleLabel(result.admin_role)} iniciada.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo validar el DNI.");
+    } finally {
+      setIsCheckingDni(false);
     }
   };
 
@@ -200,19 +250,42 @@ function OrganizadorRoute() {
             <div className="space-y-1">
               <h1 className="font-display text-3xl uppercase tracking-wider">Consola Admin</h1>
               <p className="text-sm text-muted-foreground">
-                {stored
-                  ? "Tu DNI no tiene permisos admin. El principal puede entrar con PIN."
-                  : "Ingresá tu PIN para desbloquear las herramientas permitidas."}
+                Ingresa con DNI si tu jugador tiene permiso, o usa el PIN principal.
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-4 pt-2">
+            <form onSubmit={handleDniLogin} className="space-y-4 pt-2">
+              <input
+                type="tel"
+                inputMode="numeric"
+                placeholder="DNI admin"
+                value={adminDni}
+                onChange={(e) => setAdminDni(e.target.value)}
+                autoFocus={!stored}
+                disabled={isCheckingDni}
+                className="w-full rounded-xl border border-border/60 bg-secondary/50 px-4 py-3 text-center text-xl font-mono tracking-widest focus:outline-none focus:border-lime focus:ring-2 focus:ring-lime/15 transition disabled:opacity-60"
+              />
+              <button
+                type="submit"
+                disabled={isCheckingDni}
+                className="w-full rounded-xl bg-lime px-4 py-3 text-sm font-semibold text-lime-foreground hover:brightness-110 shadow-glow transition disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isCheckingDni ? "Validando..." : "Ingresar con DNI"}
+              </button>
+            </form>
+
+            <div className="flex items-center gap-3 text-[10px] uppercase font-bold text-muted-foreground">
+              <span className="h-px flex-1 bg-border/70" />
+              <span>o</span>
+              <span className="h-px flex-1 bg-border/70" />
+            </div>
+
+            <form onSubmit={handlePinLogin} className="space-y-4">
               <input
                 type="password"
                 placeholder="Ingresá el PIN"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                autoFocus
                 className="w-full rounded-xl border border-border/60 bg-secondary/50 px-4 py-3 text-center text-xl font-mono tracking-widest focus:outline-none focus:border-lime focus:ring-2 focus:ring-lime/15 transition"
               />
               <button
