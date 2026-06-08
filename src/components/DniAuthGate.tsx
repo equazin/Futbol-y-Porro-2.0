@@ -86,10 +86,7 @@ export function DniAuthGate({ children }: { children: ReactNode }) {
               </div>
               <div>
                 <h1 className="font-display text-5xl uppercase leading-none md:text-7xl hero-title-shadow">
-                  Entra con tu{" "}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime to-emerald-300">
-                    DNI
-                  </span>
+                  Entra con tu <span className="hero-accent">DNI</span>
                 </h1>
                 <p className="mt-4 max-w-xl text-sm leading-relaxed text-foreground/80 md:text-base hero-title-shadow">
                   Usamos tu DNI solo para encontrar tu ficha de jugador. No se guarda en este

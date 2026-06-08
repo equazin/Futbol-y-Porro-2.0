@@ -120,10 +120,7 @@ function Home() {
             <Zap className="size-3 text-lime animate-pulse" /> Domingos de Futbol y Porro
           </span>
           <h1 className="mt-5 font-display text-5xl md:text-7xl leading-[0.92] uppercase max-w-2xl hero-title-shadow">
-            Futbol para siempre{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime to-emerald-300">
-              un club de amigos
-            </span>
+            Futbol para siempre <span className="hero-accent">un club de amigos</span>
           </h1>
           <p className="mt-4 max-w-lg text-sm md:text-base text-foreground/80 leading-relaxed hero-title-shadow">
             Cultivo propio y responsable. Anotate al próximo partido, mirá quién juega y seguí el

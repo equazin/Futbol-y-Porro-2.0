@@ -201,6 +201,13 @@
   text-shadow: 0 2px 20px rgba(0, 0, 0, 0.85), 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
+/* Palabra de acento: lime sólido con glow para que resalte sobre el fondo */
+@utility hero-accent {
+  color: var(--lime);
+  text-shadow: 0 0 18px color-mix(in oklab, var(--lime) 55%, transparent),
+    0 2px 10px rgba(0, 0, 0, 0.7);
+}
+
 /* Grano de film sutil para dar textura premium y romper el plano */
 @utility grain-overlay {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
