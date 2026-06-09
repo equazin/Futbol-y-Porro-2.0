@@ -14,6 +14,7 @@ import {
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store/match-store";
+import { usePicadoPlayer } from "@/hooks/use-picado-player";
 import { toast } from "sonner";
 import { DniAuthGate } from "@/components/DniAuthGate";
 
@@ -36,8 +37,19 @@ const desktopNav = [
 
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { isAdmin, adminRole, logoutAdmin, matches } = useStore();
+  const { isAdmin, adminRole, adminSource, logoutAdmin, matches } = useStore();
+  const { stored, remember } = usePicadoPlayer();
   const votingMatch = matches.find((match) => match.dbEstado === "jugado");
+
+  // Cierra sesión admin. Si entró por DNI, limpia el admin_role del jugador
+  // guardado para que no se vuelva a loguear solo (ver organizador).
+  const handleAdminLogout = () => {
+    if (adminSource === "dni" && stored?.admin_role) {
+      remember({ ...stored, admin_role: null });
+    }
+    logoutAdmin();
+    toast.info("Sesión de administrador cerrada.");
+  };
 
   return (
     <DniAuthGate>
@@ -89,10 +101,7 @@ export function AppShell() {
                         : "Equipos"}
                   </span>
                   <button
-                    onClick={() => {
-                      logoutAdmin();
-                      toast.info("Sesión de administrador cerrada.");
-                    }}
+                    onClick={handleAdminLogout}
                     className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition cursor-pointer"
                   >
                     Cerrar
@@ -141,10 +150,7 @@ export function AppShell() {
               </Link>
               {isAdmin && adminRole ? (
                 <button
-                  onClick={() => {
-                    logoutAdmin();
-                    toast.info("Sesión de administrador cerrada.");
-                  }}
+                  onClick={handleAdminLogout}
                   className="inline-flex items-center justify-center rounded-md border border-lime/30 bg-lime/10 p-1.5 text-lime shadow-glow transition cursor-pointer"
                   title="Cerrar sesión de admin"
                 >

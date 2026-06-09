@@ -312,6 +312,7 @@ function OrganizadorPanel() {
     rules,
     players,
     adminRole,
+    adminSource,
     logoutAdmin,
     setTeams,
     balanceTeams,
@@ -332,6 +333,19 @@ function OrganizadorPanel() {
     removeSignupManual,
     loadFromDatabase,
   } = useStore();
+
+  const { stored, remember } = usePicadoPlayer();
+
+  // Cierra la sesión admin. Si entró por DNI, también limpia el admin_role
+  // guardado en el jugador para que el effect de auto-login no lo vuelva a
+  // loguear (manteniendo su identidad de jugador para anotarse/votar).
+  const handleAdminLogout = useCallback(() => {
+    if (adminSource === "dni" && stored?.admin_role) {
+      remember({ ...stored, admin_role: null });
+    }
+    logoutAdmin();
+    toast.info("Sesión de administrador cerrada.");
+  }, [adminSource, stored, remember, logoutAdmin]);
 
   const isGeneralAdmin = adminRole === "general";
   const canManageTeams = adminRole === "general" || adminRole === "equipos";
@@ -828,10 +842,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
           </span>
         </div>
         <button
-          onClick={() => {
-            logoutAdmin();
-            toast.info("Sesión de administrador cerrada.");
-          }}
+          onClick={handleAdminLogout}
           className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-card hover:bg-secondary px-4 py-2.5 text-xs font-semibold text-foreground transition"
         >
           <LogOut className="size-3.5" /> Cerrar Sesión

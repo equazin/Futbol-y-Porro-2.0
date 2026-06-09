@@ -1,5 +1,5 @@
 ﻿import { createFileRoute, notFound, Link, useRouter } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMatchRealtime } from "@/hooks/use-match-realtime";
 import {
   ArrowLeft,
@@ -367,16 +367,16 @@ function VotingSection({
   participants,
   result,
   isClosed,
+  onVoted,
 }: {
   matchId: string;
   participants: SignupWithPlayer[];
   result: MatchResult | null | undefined;
   isClosed: boolean;
+  onVoted: () => Promise<void> | void;
 }) {
   const { stored, remember } = usePicadoPlayer();
-  const router = useRouter();
   const players = useStore((s) => s.players);
-  const loadFromDatabase = useStore((s) => s.loadFromDatabase);
   const playerMap = Object.fromEntries(players.map((p) => [p.id, p]));
 
   const [step, setStep] = useState<"auth" | "vote" | "done">("auth");
@@ -581,7 +581,7 @@ function VotingSection({
                 remember({ ...(stored ?? {}), player_id: res.player_id, nombre: res.nombre });
               }
               setStep("done");
-              await Promise.all([router.invalidate(), loadFromDatabase()]);
+              await onVoted();
             }}
           />
         ) : (
@@ -877,13 +877,32 @@ function PlayerRow({
 // ── Main component ────────────────────────────────────────
 
 function MatchDetail() {
-  const { match, titulares, espera, result } = Route.useLoaderData() as MatchDetailData;
-  const router = useRouter();
+  const loaderData = Route.useLoaderData() as MatchDetailData;
   const { stored, remember } = usePicadoPlayer();
   const loadFromDatabase = useStore((s) => s.loadFromDatabase);
 
-  // Suscripción Realtime: actualiza las listas en todos los dispositivos
-  useMatchRealtime(match.id);
+  // Mantenemos el detalle en estado local sembrado por el loader, y lo
+  // refrescamos pidiendo getMatchDetail directo después de cada acción.
+  // Así la UI se actualiza al instante sin depender de router.invalidate()
+  // ni de tener que recargar con F5.
+  const [data, setData] = useState<MatchDetailData>(loaderData);
+
+  // Si el loader cambia (navegación a otro partido), re-seed.
+  useEffect(() => {
+    setData(loaderData);
+  }, [loaderData]);
+
+  const { match, titulares, espera, result } = data;
+
+  const refresh = useCallback(async () => {
+    const fresh = await getMatchDetail({ data: { id: match.id } });
+    if (fresh) setData(fresh);
+    void loadFromDatabase();
+  }, [match.id, loadFromDatabase]);
+
+  // Suscripción Realtime: cuando alguien se anota/baja en otro dispositivo,
+  // refrescamos el detalle también.
+  useMatchRealtime(match.id, refresh);
 
   const [dialog, setDialog] = useState<"anotarse" | "bajarse" | null>(null);
 
@@ -908,7 +927,7 @@ function MatchDetail() {
   const allParticipants = [...titulares];
 
   async function refreshCurrentData() {
-    await Promise.all([router.invalidate(), loadFromDatabase()]);
+    await refresh();
   }
 
   async function handleAnotarse(dni: string) {
@@ -1130,6 +1149,7 @@ function MatchDetail() {
             participants={allParticipants}
             result={result}
             isClosed={isCerrado}
+            onVoted={refresh}
           />
         )}
 
