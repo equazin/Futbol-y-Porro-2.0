@@ -183,6 +183,7 @@ export const adminCreateMatch = async ({
     formato: string;
     cupo_max: number;
     estado: string;
+    match_type?: PicadoMatchType;
   };
 }) => {
   const { data: group } = await supabase
@@ -203,6 +204,7 @@ export const adminCreateMatch = async ({
       formato: data.formato,
       cupo_max: data.cupo_max,
       estado: data.estado,
+      match_type: data.match_type ?? "oficial",
     })
     .select()
     .single();
@@ -225,6 +227,7 @@ export const adminUpdateMatch = async ({
       cupo_max?: number;
       estado?: string;
       notas?: string | null;
+      match_type?: PicadoMatchType;
     };
   };
 }) => {

@@ -39,6 +39,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Player } from "@/lib/mock-data";
 import { identificarJugador } from "@/lib/api/picado.functions";
+import type { PicadoMatchType } from "@/types/picado";
 
 export const Route = createFileRoute("/_app/organizador")({
   component: OrganizadorRoute,
@@ -328,6 +329,7 @@ function OrganizadorPanel() {
     updatePlayer,
     deletePlayer,
     createMatch,
+    updateMatch,
     deleteMatch,
     addSignupManual,
     removeSignupManual,
@@ -387,6 +389,8 @@ function OrganizadorPanel() {
   const [newMatchSede, setNewMatchSede] = useState("");
   const [newMatchFormato, setNewMatchFormato] = useState("7v7");
   const [newMatchCupoMax, setNewMatchCupoMax] = useState(14);
+  const [newMatchType, setNewMatchType] = useState<PicadoMatchType>("oficial");
+  const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
 
   // States para anotarse manualmente
   const [selectedAddPlayerId, setSelectedAddPlayerId] = useState("");
@@ -516,29 +520,75 @@ function OrganizadorPanel() {
     });
   };
 
-  // Crear Partido nuevo
+  const resetMatchForm = () => {
+    setNewMatchFecha("");
+    setNewMatchHora("20:00");
+    setNewMatchSede("");
+    setNewMatchFormato("7v7");
+    setNewMatchCupoMax(14);
+    setNewMatchType("oficial");
+    setEditingMatchId(null);
+  };
+
+  const openCreateMatchModal = () => {
+    if (!isGeneralAdmin) return;
+    resetMatchForm();
+    setShowCreateMatch(true);
+  };
+
+  const openEditMatchModal = (match: StoredMatch) => {
+    if (!isGeneralAdmin) return;
+    setEditingMatchId(match.id);
+    setNewMatchFecha(match.date.slice(0, 10));
+    setNewMatchHora((match.hora ?? match.date.slice(11, 16) ?? "20:00").slice(0, 5));
+    setNewMatchSede(match.venue);
+    setNewMatchFormato(match.format);
+    setNewMatchCupoMax(match.capacity);
+    setNewMatchType((match.matchType as PicadoMatchType | undefined) ?? "oficial");
+    setShowCreateMatch(true);
+  };
+
+  const closeMatchModal = () => {
+    setShowCreateMatch(false);
+    resetMatchForm();
+  };
+
+  // Crear/editar Partido
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isGeneralAdmin) return;
-    if (!newMatchFecha || !newMatchSede) {
+    if (!newMatchFecha || !newMatchSede.trim()) {
       toast.error("Completá todos los campos.");
       return;
     }
-    const promise = createMatch(
-      newMatchFecha,
-      newMatchHora,
-      newMatchSede,
-      newMatchFormato,
-      newMatchCupoMax,
-    );
+    const promise = editingMatchId
+      ? updateMatch(editingMatchId, {
+          fecha: newMatchFecha,
+          hora: newMatchHora,
+          sede: newMatchSede.trim(),
+          formato: newMatchFormato,
+          cupo_max: newMatchCupoMax,
+          matchType: newMatchType,
+        })
+      : createMatch(
+          newMatchFecha,
+          newMatchHora,
+          newMatchSede.trim(),
+          newMatchFormato,
+          newMatchCupoMax,
+          newMatchType,
+        );
     toast.promise(promise, {
-      loading: "Creando partido en Supabase...",
-      success: "¡Partido creado con éxito!",
-      error: "Error al crear el partido",
+      loading: editingMatchId ? "Guardando cambios del partido..." : "Creando partido en Supabase...",
+      success: editingMatchId ? "Partido actualizado con exito." : "Partido creado con exito.",
+      error: editingMatchId ? "Error al actualizar el partido" : "Error al crear el partido",
     });
-    setShowCreateMatch(false);
-    setNewMatchSede("");
-    setNewMatchFecha("");
+    try {
+      await promise;
+      closeMatchModal();
+    } catch {
+      // toast.promise already surfaces the error.
+    }
   };
 
   // Eliminar Partido
@@ -886,7 +936,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
               </h2>
               {isGeneralAdmin && (
                 <button
-                  onClick={() => setShowCreateMatch(true)}
+                  onClick={openCreateMatchModal}
                   className="inline-flex items-center gap-1 rounded bg-lime/10 border border-lime/30 text-lime px-2 py-1 text-[10px] font-bold uppercase hover:bg-lime/20 transition animate-fade-in"
                 >
                   <Plus className="size-3" /> Crear
@@ -951,7 +1001,7 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                 </div>
                 {isGeneralAdmin && (
                   <button
-                    onClick={() => setShowCreateMatch(true)}
+                    onClick={openCreateMatchModal}
                     className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-2.5 text-xs font-bold text-lime-foreground hover:brightness-110 shadow-glow transition mt-2"
                   >
                     <Plus className="size-4" /> Crear Primer Partido
@@ -989,6 +1039,13 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                   <div
                     className={cn("shrink-0 flex items-center gap-2", !isGeneralAdmin && "hidden")}
                   >
+                    <button
+                      onClick={() => openEditMatchModal(activeMatch)}
+                      className="inline-flex items-center justify-center p-2 rounded-xl border border-border/70 bg-card hover:bg-secondary text-muted-foreground hover:text-foreground transition"
+                      title="Editar datos del partido"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
                     <button
                       onClick={handleDeleteMatch}
                       className="inline-flex items-center justify-center p-2 rounded-xl border border-out/30 bg-card hover:bg-out/10 text-out transition"
@@ -1772,23 +1829,27 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
         </div>
       )}
 
-      {/* ── Modal Crear Partido ── */}
+      {/* ── Modal Crear / Editar Partido ── */}
       {isGeneralAdmin && showCreateMatch && (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowCreateMatch(false)}
+            onClick={closeMatchModal}
           />
           <div className="relative w-full max-w-sm rounded-3xl bg-card border border-border/60 p-6 shadow-2xl animate-fade-in font-sans">
             <button
-              onClick={() => setShowCreateMatch(false)}
+              onClick={closeMatchModal}
               className="absolute top-4 right-4 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition"
             >
               <X className="size-4" />
             </button>
-            <h2 className="font-display text-2xl uppercase mb-1 text-lime">Crear Nuevo Partido</h2>
+            <h2 className="font-display text-2xl uppercase mb-1 text-lime">
+              {editingMatchId ? "Editar Partido" : "Crear Nuevo Partido"}
+            </h2>
             <p className="text-xs text-muted-foreground mb-4">
-              Ingresá los datos del partido en Supabase.
+              {editingMatchId
+                ? "Modifica fecha, horario, sede y detalles del partido."
+                : "Ingresa los datos del partido en Supabase."}
             </p>
             <form onSubmit={handleCreateMatch} className="space-y-3">
               <div className="space-y-1">
@@ -1860,11 +1921,24 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                   />
                 </div>
               </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                  Tipo de Partido
+                </label>
+                <select
+                  value={newMatchType}
+                  onChange={(e) => setNewMatchType(e.target.value as PicadoMatchType)}
+                  className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-lime"
+                >
+                  <option value="oficial">Oficial</option>
+                  <option value="fecha_fifa">Fecha FIFA</option>
+                </select>
+              </div>
               <button
                 type="submit"
                 className="w-full rounded-xl bg-lime px-4 py-3 text-sm font-semibold text-lime-foreground hover:brightness-110 shadow-glow transition mt-2"
               >
-                Crear Partido
+                {editingMatchId ? "Guardar Cambios" : "Crear Partido"}
               </button>
             </form>
           </div>

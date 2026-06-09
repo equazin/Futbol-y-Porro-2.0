@@ -20,7 +20,7 @@ import {
   getScoringRules,
   saveScoringRules,
 } from "@/lib/api/picado.functions";
-import type { PicadoAdminRole } from "@/types/picado";
+import type { PicadoAdminRole, PicadoMatchType } from "@/types/picado";
 
 export type PlayerStats = {
   attended: boolean;
@@ -130,6 +130,18 @@ type Actions = {
     sede: string,
     formato: string,
     cupo_max: number,
+    matchType?: PicadoMatchType,
+  ) => Promise<void>;
+  updateMatch: (
+    id: string,
+    patch: {
+      fecha?: string;
+      hora?: string;
+      sede?: string;
+      formato?: string;
+      cupo_max?: number;
+      matchType?: PicadoMatchType;
+    },
   ) => Promise<void>;
   deleteMatch: (id: string) => Promise<void>;
   addSignupManual: (
@@ -620,7 +632,7 @@ export const useStore = create<State & Actions>()(
         await store.loadFromDatabase();
       },
 
-      createMatch: async (fecha, hora, sede, formato, cupo_max) => {
+      createMatch: async (fecha, hora, sede, formato, cupo_max, matchType = "oficial") => {
         await adminCreateMatch({
           data: {
             fecha,
@@ -629,6 +641,26 @@ export const useStore = create<State & Actions>()(
             formato,
             cupo_max,
             estado: "abierto",
+            match_type: matchType,
+          },
+        });
+        const store = useStore.getState();
+        await store.loadFromDatabase();
+      },
+
+      updateMatch: async (id, patch) => {
+        const patchData: Parameters<typeof adminUpdateMatch>[0]["data"]["patch"] = {};
+        if (patch.fecha !== undefined) patchData.fecha = patch.fecha;
+        if (patch.hora !== undefined) patchData.hora = `${patch.hora.slice(0, 5)}:00`;
+        if (patch.sede !== undefined) patchData.sede = patch.sede;
+        if (patch.formato !== undefined) patchData.formato = patch.formato;
+        if (patch.cupo_max !== undefined) patchData.cupo_max = patch.cupo_max;
+        if (patch.matchType !== undefined) patchData.match_type = patch.matchType;
+
+        await adminUpdateMatch({
+          data: {
+            id,
+            patch: patchData,
           },
         });
         const store = useStore.getState();
