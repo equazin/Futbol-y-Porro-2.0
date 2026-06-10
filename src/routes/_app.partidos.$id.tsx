@@ -26,6 +26,8 @@ import {
   anotarse,
   bajarse,
   registrarVoto,
+  agregarInvitado,
+  quitarInvitado,
 } from "@/lib/api/picado.functions";
 import { usePicadoPlayer } from "@/hooks/use-picado-player";
 import { PlayerAvatar } from "@/components/Avatar";
@@ -87,7 +89,7 @@ function LiveDot() {
 // ── Helpers ───────────────────────────────────────────────
 
 function displayName(p: SignupWithPlayer["players"]) {
-  return p.apodo ?? p.nombre;
+  return p?.apodo ?? p?.nombre ?? "Jugador";
 }
 
 function posLabel(pos: string | null) {
@@ -404,8 +406,10 @@ function VotingSection({
   const topMvpEntry = Object.entries(mvpTally).sort((a, b) => b[1] - a[1])[0];
   const topGolEntry = Object.entries(golTally).sort((a, b) => b[1] - a[1])[0];
   const voterIds = new Set(votes.map((v) => v.voter_id).filter(Boolean));
-  const votedParticipants = participants.filter((s) => voterIds.has(s.player_id));
-  const missingParticipants = participants.filter((s) => !voterIds.has(s.player_id));
+  // Solo jugadores registrados votan; los invitados (player_id null) se ignoran.
+  const realParticipants = participants.filter((s) => s.player_id != null);
+  const votedParticipants = realParticipants.filter((s) => voterIds.has(s.player_id!));
+  const missingParticipants = realParticipants.filter((s) => !voterIds.has(s.player_id!));
 
   function getName(id: string) {
     const found = participants.find((s) => s.player_id === id);
@@ -640,12 +644,12 @@ function VoteForm({
   const winnerTeamIds: string[] = scoreA > scoreB ? teamA : scoreB > scoreA ? teamB : [];
 
   const mvpCandidates = participants.filter((s) => {
-    if (s.player_id === voterPlayerId) return false; // no self-vote
+    if (!s.player_id || s.player_id === voterPlayerId) return false; // no self-vote / no invitados
     return winnerTeamIds.includes(s.player_id); // only winners
   });
 
   const golCandidates = participants.filter((s) => {
-    if (s.player_id === voterPlayerId) return false; // no self-vote
+    if (!s.player_id || s.player_id === voterPlayerId) return false; // no self-vote / no invitados
     return (result?.stats?.[s.player_id]?.goals ?? 0) > 0; // only scorers
   });
 
@@ -727,8 +731,8 @@ function VoteForm({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {mvpCandidates.map((s) => (
               <button
-                key={s.player_id}
-                onClick={() => setMvpVote(s.player_id)}
+                key={s.player_id!}
+                onClick={() => setMvpVote(s.player_id!)}
                 className={cn(
                   "flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs transition group",
                   mvpVote === s.player_id
@@ -739,7 +743,7 @@ function VoteForm({
                 <span
                   className={cn(
                     "size-4 flex items-center justify-center shrink-0 text-sm",
-                    posColors[s.players.posicion ?? ""] ?? "",
+                    posColors[s.players?.posicion ?? ""] ?? "",
                   )}
                 >
                   {mvpVote === s.player_id ? "👑" : "○"}
@@ -763,8 +767,8 @@ function VoteForm({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {golCandidates.map((s) => (
               <button
-                key={s.player_id}
-                onClick={() => setGolVote(s.player_id)}
+                key={s.player_id!}
+                onClick={() => setGolVote(s.player_id!)}
                 className={cn(
                   "flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs transition",
                   golVote === s.player_id
@@ -829,13 +833,24 @@ function PlayerRow({
   index,
   isMe,
   variant,
+  hostName,
+  canRemoveGuest = false,
+  onRemoveGuest,
 }: {
   signup: SignupWithPlayer;
   index: number;
   isMe: boolean;
   variant: "titular" | "espera";
+  /** Nombre del jugador que trajo al invitado (si es invitado). */
+  hostName?: string | null;
+  /** El usuario actual puede dar de baja a este invitado. */
+  canRemoveGuest?: boolean;
+  onRemoveGuest?: () => void;
 }) {
   const p = signup.players;
+  const isGuest = !p && !!signup.guest_name;
+  const name = isGuest ? signup.guest_name! : displayName(p);
+
   return (
     <li
       className={cn(
@@ -854,18 +869,35 @@ function PlayerRow({
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm font-medium truncate">{displayName(p)}</span>
+          <span className="text-sm font-medium truncate">{name}</span>
           {isMe && (
             <span className="text-[10px] uppercase tracking-wider font-bold text-lime shrink-0">
               vos
             </span>
           )}
+          {isGuest && (
+            <span className="text-[9px] uppercase tracking-wider font-bold text-gold bg-gold/10 border border-gold/30 rounded px-1.5 py-0.5 shrink-0">
+              Invitado
+            </span>
+          )}
         </div>
-        <div className="text-[11px] text-muted-foreground">
-          {posLabel(p.posicion)} · {p.nombre}
+        <div className="text-[11px] text-muted-foreground truncate">
+          {isGuest
+            ? hostName
+              ? `Invitado de ${hostName}`
+              : "Invitado externo"
+            : `${posLabel(p?.posicion ?? null)} · ${p?.nombre ?? ""}`}
         </div>
       </div>
-      {variant === "titular" ? (
+      {isGuest && canRemoveGuest ? (
+        <button
+          onClick={onRemoveGuest}
+          className="p-1 rounded-md text-muted-foreground hover:text-out hover:bg-out/15 transition shrink-0"
+          title="Dar de baja al invitado"
+        >
+          <X className="size-4" />
+        </button>
+      ) : variant === "titular" ? (
         <Check className="size-4 text-confirmed shrink-0" />
       ) : (
         <Hourglass className="size-3.5 text-gold shrink-0" />
@@ -926,8 +958,70 @@ function MatchDetail() {
   // Combine all participants for voting
   const allParticipants = [...titulares];
 
+  // Resolver el nombre del anfitrión de un invitado (por player_id) usando
+  // los inscriptos del partido y el plantel del store.
+  const storePlayers = useStore((s) => s.players);
+  const nameByPlayerId = (pid: string | null | undefined): string | null => {
+    if (!pid) return null;
+    const fromSignup = [...titulares, ...espera].find((s) => s.player_id === pid)?.players;
+    if (fromSignup) return fromSignup.apodo ?? fromSignup.nombre;
+    const fromStore = storePlayers.find((p) => p.id === pid);
+    return fromStore ? (fromStore.nickname ?? fromStore.name) : null;
+  };
+
+  // Estado del mini-form para agregar invitado
+  const [guestName, setGuestName] = useState("");
+  const [addingGuest, setAddingGuest] = useState(false);
+
   async function refreshCurrentData() {
     await refresh();
+  }
+
+  async function handleAgregarInvitado(e: React.FormEvent) {
+    e.preventDefault();
+    if (!stored?.player_id) {
+      toast.error("Identificate primero para sumar un invitado.");
+      return;
+    }
+    const name = guestName.trim();
+    if (!name) {
+      toast.error("Ingresá el nombre del invitado.");
+      return;
+    }
+    setAddingGuest(true);
+    try {
+      const res = await agregarInvitado({
+        data: { match_id: match.id, host_player_id: stored.player_id, guest_name: name },
+      });
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+      toast.success(res.message);
+      setGuestName("");
+      await refresh();
+    } catch (err) {
+      toast.error("Error al agregar invitado: " + errorMessage(err));
+    } finally {
+      setAddingGuest(false);
+    }
+  }
+
+  async function handleQuitarInvitado(signupId: string) {
+    if (!stored?.player_id) return;
+    try {
+      const res = await quitarInvitado({
+        data: { signup_id: signupId, host_player_id: stored.player_id },
+      });
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+      toast.info("Invitado dado de baja.");
+      await refresh();
+    } catch (err) {
+      toast.error("Error al dar de baja: " + errorMessage(err));
+    }
   }
 
   async function handleAnotarse(dni: string) {
@@ -1174,6 +1268,9 @@ function MatchDetail() {
                   index={i}
                   isMe={s.player_id === stored?.player_id}
                   variant="titular"
+                  hostName={nameByPlayerId(s.invited_by)}
+                  canRemoveGuest={isOpen && !!stored && s.invited_by === stored.player_id}
+                  onRemoveGuest={() => handleQuitarInvitado(s.id)}
                 />
               ))}
             </ul>
@@ -1200,10 +1297,46 @@ function MatchDetail() {
                     index={i}
                     isMe={s.player_id === stored?.player_id}
                     variant="espera"
+                    hostName={nameByPlayerId(s.invited_by)}
+                    canRemoveGuest={isOpen && !!stored && s.invited_by === stored.player_id}
+                    onRemoveGuest={() => handleQuitarInvitado(s.id)}
                   />
                 ))}
               </ul>
             )}
+          </section>
+        )}
+
+        {/* ── Agregar invitado (si estás anotado y el partido está abierto) ── */}
+        {isOpen && mySignup && (
+          <section className="mt-8">
+            <div className="rounded-2xl border border-border/60 bg-card/40 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <UserPlus className="size-4 text-lime" />
+                <h3 className="font-display text-lg uppercase">Sumar un invitado</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                ¿Falta gente? Sumá a un amigo o conocido a la convocatoria. Queda registrado que lo
+                trajiste vos.
+              </p>
+              <form onSubmit={handleAgregarInvitado} className="flex gap-2">
+                <input
+                  type="text"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Nombre del invitado"
+                  maxLength={40}
+                  className="flex-1 rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm focus:outline-none focus:border-lime transition"
+                />
+                <button
+                  type="submit"
+                  disabled={addingGuest || !guestName.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-lime px-4 py-2.5 text-sm font-bold text-lime-foreground hover:brightness-110 shadow-glow transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <UserPlus className="size-4" /> {addingGuest ? "..." : "Sumar"}
+                </button>
+              </form>
+            </div>
           </section>
         )}
 

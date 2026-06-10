@@ -69,15 +69,17 @@ export type PicadoMatch = {
 export type PicadoSignup = {
   id: string;
   match_id: string;
-  player_id: string;
+  player_id: string | null; // null si es un invitado externo
   estado: SignupEstado;
   orden: number;
   created_at: string;
+  guest_name?: string | null; // nombre del invitado (si no es jugador)
+  invited_by?: string | null; // player_id del anfitrión que lo trajo
 };
 
-// Signup with player data joined from 'players' table
+// Signup con datos del jugador (null si es un invitado externo).
 export type SignupWithPlayer = PicadoSignup & {
-  players: Pick<ExistingPlayer, "id" | "nombre" | "apodo" | "posicion">;
+  players: Pick<ExistingPlayer, "id" | "nombre" | "apodo" | "posicion"> | null;
 };
 
 // ── Voting ─────────────────────────────────────────────────

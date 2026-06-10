@@ -94,6 +94,7 @@ export const getMatchDetail = async ({
     .eq("match_id", data.id)
     .in("estado", ["titular", "espera"])
     .order("orden", { ascending: true });
+  // (player_id puede ser null para invitados; guest_name/invited_by vienen con *)
 
   if (signupsError) throw new Error(signupsError.message);
 
@@ -291,6 +292,35 @@ export const adminRemoveSignup = async ({
 
   if (error) throw new Error(error.message);
   return { ok: true };
+};
+
+// ── Invitado externo: agregar (lo suma un jugador anotado) ─
+export const agregarInvitado = async ({
+  data,
+}: {
+  data: { match_id: string; host_player_id: string; guest_name: string };
+}): Promise<{ ok: boolean; message: string; estado?: string }> => {
+  const { data: result, error } = await supabase.rpc("picado_agregar_invitado", {
+    p_match_id: data.match_id,
+    p_host_player_id: data.host_player_id,
+    p_guest_name: data.guest_name.trim(),
+  });
+  if (error) throw new Error(error.message);
+  return result as { ok: boolean; message: string; estado?: string };
+};
+
+// ── Invitado externo: quitar (solo quien lo trajo) ─────────
+export const quitarInvitado = async ({
+  data,
+}: {
+  data: { signup_id: string; host_player_id: string };
+}): Promise<{ ok: boolean; message: string }> => {
+  const { data: result, error } = await supabase.rpc("picado_quitar_invitado", {
+    p_signup_id: data.signup_id,
+    p_host_player_id: data.host_player_id,
+  });
+  if (error) throw new Error(error.message);
+  return result as { ok: boolean; message: string };
 };
 
 // ── Admin Mutation: crear jugador en el plantel ───────────
