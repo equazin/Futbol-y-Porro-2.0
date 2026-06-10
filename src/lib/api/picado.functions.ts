@@ -90,7 +90,7 @@ export const getMatchDetail = async ({
 
   const { data: signups, error: signupsError } = await supabase
     .from("picado_signups")
-    .select("*, players(id, nombre, apodo, posicion)")
+    .select("*, players:players!picado_signups_player_id_fkey(id, nombre, apodo, posicion)")
     .eq("match_id", data.id)
     .in("estado", ["titular", "espera"])
     .order("orden", { ascending: true });
@@ -271,7 +271,7 @@ export const adminAddSignup = async ({
       estado: data.estado,
       orden: nextOrden,
     })
-    .select("*, players(id, nombre, apodo, posicion)")
+    .select("*, players:players!picado_signups_player_id_fkey(id, nombre, apodo, posicion)")
     .single();
 
   if (error) throw new Error(error.message);
