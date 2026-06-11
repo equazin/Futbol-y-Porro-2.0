@@ -47,10 +47,19 @@ type MatchVote = {
   gol_vote: string;
 };
 
+type GuestParticipant = {
+  id: string;
+  name: string;
+  estado: "titular" | "espera";
+  invitedBy?: string | null;
+};
+
 export type StoredMatch = Match & {
   result?: MatchResult;
   played?: boolean;
   dbEstado?: string;
+  guestPlayers?: Player[];
+  guestSignups?: GuestParticipant[];
 };
 
 export type ScoringRules = {
@@ -235,6 +244,30 @@ function withDerivedScore(result: MatchResult): MatchResult {
     scoreA: getTeamScore(result.teamA, result.stats),
     scoreB: getTeamScore(result.teamB, result.stats),
   };
+}
+
+function withConfirmedParticipants(result: MatchResult, confirmed: string[]): MatchResult {
+  const teamA = [...(result.teamA ?? [])];
+  const teamB = [...(result.teamB ?? [])];
+  const stats = { ...(result.stats ?? {}) };
+  const assigned = new Set([...teamA, ...teamB]);
+  let changed = false;
+
+  for (const playerId of confirmed) {
+    if (!stats[playerId]) {
+      stats[playerId] = { attended: true, goals: 0, assists: 0, mvp: false };
+      changed = true;
+    }
+    if (!assigned.has(playerId)) {
+      if (teamA.length <= teamB.length) teamA.push(playerId);
+      else teamB.push(playerId);
+      assigned.add(playerId);
+      changed = true;
+    }
+  }
+
+  if (!changed) return result;
+  return withDerivedScore({ ...result, teamA, teamB, stats });
 }
 
 function topVote(
@@ -721,6 +754,14 @@ export const useStore = create<State & Actions>()(
           "oklch(0.75 0.18 50)",
           "oklch(0.72 0.2 340)",
         ];
+        const initialsFor = (name: string) =>
+          name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((part) => part[0] ?? "")
+            .join("")
+            .toUpperCase() || "I";
 
         const mappedPlayers: PicadoPlayer[] = dbPlayers.map((p, i) => {
           const nickname = p.apodo || p.nombre;
@@ -738,9 +779,32 @@ export const useStore = create<State & Actions>()(
             adminRole: p.picado_admin_role ?? null,
           };
         });
+        const matchesWithGuests = dbMatches.map((match, matchIndex) => {
+          const withGuests = {
+            ...match,
+            guestPlayers: (match.guestSignups ?? []).map((guest, guestIndex) => ({
+              id: guest.id,
+              name: guest.name,
+              nickname: guest.name,
+              position: "MED" as Player["position"],
+              rating: 1000,
+              goals: 0,
+              played: 0,
+              initials: initialsFor(guest.name),
+              color: colors[(mappedPlayers.length + matchIndex + guestIndex) % colors.length],
+              foto_url: null,
+            })),
+          };
+          return withGuests.result
+            ? {
+                ...withGuests,
+                result: withConfirmedParticipants(withGuests.result, withGuests.confirmed ?? []),
+              }
+            : withGuests;
+        });
 
         set({
-          matches: dbMatches,
+          matches: matchesWithGuests,
           players: mappedPlayers,
           // Si el grupo tiene reglas guardadas en Supabase, las usamos
           // (mezcladas con los defaults por si falta algún campo).

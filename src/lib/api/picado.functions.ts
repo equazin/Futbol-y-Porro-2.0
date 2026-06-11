@@ -284,11 +284,11 @@ export const adminRemoveSignup = async ({
 }: {
   data: { match_id: string; player_id: string };
 }) => {
-  const { error } = await supabase
-    .from("picado_signups")
-    .delete()
-    .eq("match_id", data.match_id)
-    .eq("player_id", data.player_id);
+  const query = supabase.from("picado_signups").delete().eq("match_id", data.match_id);
+  const signupId = data.player_id.startsWith("guest:") ? data.player_id.slice("guest:".length) : null;
+  const { error } = signupId
+    ? await query.eq("id", signupId)
+    : await query.eq("player_id", data.player_id);
 
   if (error) throw new Error(error.message);
   return { ok: true };
@@ -418,7 +418,7 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
 
   const { data: signups, error: signupsError } = await supabase
     .from("picado_signups")
-    .select("match_id, player_id, estado, orden")
+    .select("id, match_id, player_id, estado, orden, guest_name, invited_by")
     .in("match_id", matchIds)
     .in("estado", ["titular", "espera"])
     .order("orden", { ascending: true });
@@ -427,8 +427,24 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
 
   return (matches ?? []).map((m) => {
     const matchSignups = (signups ?? []).filter((s) => s.match_id === m.id);
-    const confirmed = matchSignups.filter((s) => s.estado === "titular").map((s) => s.player_id);
-    const waitlist = matchSignups.filter((s) => s.estado === "espera").map((s) => s.player_id);
+    const participantId = (signup: (typeof matchSignups)[number]) =>
+      signup.player_id ?? (signup.guest_name ? `guest:${signup.id}` : null);
+    const confirmed = matchSignups
+      .filter((s) => s.estado === "titular")
+      .map(participantId)
+      .filter(Boolean);
+    const waitlist = matchSignups
+      .filter((s) => s.estado === "espera")
+      .map(participantId)
+      .filter(Boolean);
+    const guestSignups = matchSignups
+      .filter((s) => !s.player_id && s.guest_name)
+      .map((s) => ({
+        id: `guest:${s.id}`,
+        name: s.guest_name ?? "Invitado",
+        estado: s.estado as "titular" | "espera",
+        invitedBy: s.invited_by ?? null,
+      }));
 
     let result: unknown = undefined;
     if (m.notes || m.notas) {
@@ -450,6 +466,7 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
       capacity: m.cupo_max,
       confirmed,
       waitlist,
+      guestSignups,
       status:
         m.estado === "programado"
           ? "closed"

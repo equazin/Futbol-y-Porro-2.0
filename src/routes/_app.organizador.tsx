@@ -422,8 +422,14 @@ function OrganizadorPanel() {
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [modalPlayerId, setModalPlayerId] = useState<string | null>(null);
 
-  // playerMap reactivo basado en la lista de jugadores de Zustand
-  const playerMap = useMemo(() => Object.fromEntries(players.map((p) => [p.id, p])), [players]);
+  // playerMap reactivo basado en plantel + invitados del partido activo.
+  const playerMap = useMemo(
+    () =>
+      Object.fromEntries(
+        [...players, ...(activeMatch?.guestPlayers ?? [])].map((p) => [p.id, p]),
+      ),
+    [players, activeMatch],
+  );
 
   const unassignedPlayers = useMemo(() => {
     if (!activeMatch) return [];
