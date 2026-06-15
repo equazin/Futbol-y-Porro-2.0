@@ -902,6 +902,12 @@ export function computeRanking(
 
     for (const [pid, s] of Object.entries(stats)) {
       if (!s.attended) continue;
+      const inA = teamA.includes(pid);
+      const inB = teamB.includes(pid);
+      // Solo cuenta como que jugó si está en alguno de los dos equipos.
+      // Evita contar stats residuales de jugadores que quedaron en el JSON
+      // sin estar realmente en la planilla del partido.
+      if (!inA && !inB) continue;
       const row = map[pid];
       if (!row) continue;
       row.attended += 1;
@@ -909,12 +915,10 @@ export function computeRanking(
       row.assists += s.assists;
       if (s.mvp) row.mvps += 1;
       if (s.golVote) row.goalsOfTheDay += 1;
-      const inA = teamA.includes(pid);
-      const inB = teamB.includes(pid);
       if (inA && aWon) row.wins += 1;
       else if (inB && bWon) row.wins += 1;
-      else if ((inA || inB) && drew) row.draws += 1;
-      else if (inA || inB) row.losses += 1;
+      else if (drew) row.draws += 1;
+      else row.losses += 1;
 
       row.points +=
         rules.attendance + (s.mvp ? rules.mvp : 0) + (s.golVote ? rules.goalOfTheDay : 0);
