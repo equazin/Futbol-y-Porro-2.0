@@ -81,7 +81,9 @@ function buildVotingSummary(match: StoredMatch | undefined, playerMap: Record<st
   const result = getMatchResult(match);
   const votes = result.votes ?? [];
   const voterIds = Array.from(new Set(votes.map((v) => v.voter_id).filter(Boolean)));
-  const participantIds = match?.confirmed ?? [];
+  // Solo los jugadores registrados votan; los invitados (id "guest:...") no
+  // tienen DNI, así que no cuentan ni para el total ni para "falta votar".
+  const participantIds = (match?.confirmed ?? []).filter((id) => !id.startsWith("guest:"));
   const missingIds = participantIds.filter((id) => !voterIds.includes(id));
   const remainingVotes = Math.max(0, participantIds.length - voterIds.length);
 
