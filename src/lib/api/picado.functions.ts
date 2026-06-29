@@ -252,6 +252,63 @@ export const adminDeleteMatch = async ({ data }: { data: { id: string } }) => {
 };
 
 // ── Admin Mutation: inscribir jugador manualmente ─────────
+type MatchResultLike = {
+  teamA?: unknown;
+  teamB?: unknown;
+  stats?: unknown;
+  votes?: unknown;
+  mvpResult?: unknown;
+  golResult?: unknown;
+  [key: string]: unknown;
+};
+
+const stringArray = (value: unknown) =>
+  Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
+
+const pruneResultParticipants = (result: unknown, confirmed: string[], pruneMissing: boolean) => {
+  if (!result || typeof result !== "object" || !pruneMissing) return result;
+
+  const confirmedSet = new Set(confirmed);
+  const current = result as MatchResultLike;
+  const stats =
+    current.stats && typeof current.stats === "object" && !Array.isArray(current.stats)
+      ? Object.fromEntries(
+          Object.entries(current.stats as Record<string, unknown>).filter(([id]) =>
+            confirmedSet.has(id),
+          ),
+        )
+      : current.stats;
+  const next: MatchResultLike = {
+    ...current,
+    teamA: stringArray(current.teamA).filter((id) => confirmedSet.has(id)),
+    teamB: stringArray(current.teamB).filter((id) => confirmedSet.has(id)),
+    stats,
+  };
+
+  if (typeof next.mvpResult === "string" && !confirmedSet.has(next.mvpResult)) {
+    delete next.mvpResult;
+  }
+  if (typeof next.golResult === "string" && !confirmedSet.has(next.golResult)) {
+    delete next.golResult;
+  }
+  if (Array.isArray(next.votes)) {
+    next.votes = next.votes.filter((vote) => {
+      if (!vote || typeof vote !== "object") return false;
+      const row = vote as Record<string, unknown>;
+      return (
+        typeof row.voter_id === "string" &&
+        typeof row.mvp_vote === "string" &&
+        typeof row.gol_vote === "string" &&
+        confirmedSet.has(row.voter_id) &&
+        confirmedSet.has(row.mvp_vote) &&
+        confirmedSet.has(row.gol_vote)
+      );
+    });
+  }
+
+  return next;
+};
+
 export const adminAddSignup = async ({
   data,
 }: {
@@ -284,14 +341,15 @@ export const adminRemoveSignup = async ({
 }: {
   data: { match_id: string; player_id: string };
 }) => {
-  const query = supabase.from("picado_signups").delete().eq("match_id", data.match_id);
-  const signupId = data.player_id.startsWith("guest:") ? data.player_id.slice("guest:".length) : null;
-  const { error } = signupId
-    ? await query.eq("id", signupId)
-    : await query.eq("player_id", data.player_id);
-
+  const { data: result, error } = await supabase.rpc("picado_admin_remove_signup", {
+    p_match_id: data.match_id,
+    p_participant_id: data.player_id,
+  });
   if (error) throw new Error(error.message);
-  return { ok: true };
+  if (result && typeof result === "object" && "ok" in result && !result.ok) {
+    throw new Error(String(result.message || "No se pudo dar de baja"));
+  }
+  return result ?? { ok: true };
 };
 
 // ── Invitado externo: agregar (lo suma un jugador anotado) ─
@@ -446,16 +504,19 @@ export const getMatchesWithSignups = async ({ data }: { data: { slug: string } }
         invitedBy: s.invited_by ?? null,
       }));
 
+    const played = m.estado === "jugado" || m.estado === "cerrado";
     let result: unknown = undefined;
     if (m.notes || m.notas) {
       try {
-        result = JSON.parse(m.notas || m.notes || "");
+        result = pruneResultParticipants(
+          JSON.parse(m.notas || m.notes || ""),
+          confirmed,
+          m.estado !== "cerrado",
+        );
       } catch {
         // Si no es JSON válido, es texto común
       }
     }
-
-    const played = m.estado === "jugado" || m.estado === "cerrado";
 
     return {
       id: m.id,

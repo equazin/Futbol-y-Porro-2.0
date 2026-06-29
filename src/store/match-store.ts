@@ -246,12 +246,28 @@ function withDerivedScore(result: MatchResult): MatchResult {
   };
 }
 
-function withConfirmedParticipants(result: MatchResult, confirmed: string[]): MatchResult {
-  const teamA = [...(result.teamA ?? [])];
-  const teamB = [...(result.teamB ?? [])];
-  const stats = { ...(result.stats ?? {}) };
+function withConfirmedParticipants(
+  result: MatchResult,
+  confirmed: string[],
+  options: { pruneMissing?: boolean } = {},
+): MatchResult {
+  const confirmedSet = new Set(confirmed);
+  const teamA = options.pruneMissing
+    ? [...(result.teamA ?? [])].filter((id) => confirmedSet.has(id))
+    : [...(result.teamA ?? [])];
+  const teamB = options.pruneMissing
+    ? [...(result.teamB ?? [])].filter((id) => confirmedSet.has(id))
+    : [...(result.teamB ?? [])];
+  const stats = options.pruneMissing
+    ? Object.fromEntries(
+        Object.entries(result.stats ?? {}).filter(([id]) => confirmedSet.has(id)),
+      )
+    : { ...(result.stats ?? {}) };
   const assigned = new Set([...teamA, ...teamB]);
-  let changed = false;
+  let changed =
+    teamA.length !== (result.teamA ?? []).length ||
+    teamB.length !== (result.teamB ?? []).length ||
+    Object.keys(stats).length !== Object.keys(result.stats ?? {}).length;
 
   for (const playerId of confirmed) {
     if (!stats[playerId]) {
@@ -267,7 +283,23 @@ function withConfirmedParticipants(result: MatchResult, confirmed: string[]): Ma
   }
 
   if (!changed) return result;
-  return withDerivedScore({ ...result, teamA, teamB, stats });
+
+  const cleanedResult: MatchResult = { ...result, teamA, teamB, stats };
+  if (cleanedResult.mvpResult && !confirmedSet.has(cleanedResult.mvpResult)) {
+    delete cleanedResult.mvpResult;
+  }
+  if (cleanedResult.golResult && !confirmedSet.has(cleanedResult.golResult)) {
+    delete cleanedResult.golResult;
+  }
+  if (options.pruneMissing && cleanedResult.votes) {
+    cleanedResult.votes = cleanedResult.votes.filter(
+      (vote) =>
+        confirmedSet.has(vote.voter_id) &&
+        confirmedSet.has(vote.mvp_vote) &&
+        confirmedSet.has(vote.gol_vote),
+    );
+  }
+  return withDerivedScore(cleanedResult);
 }
 
 function topVote(
@@ -798,7 +830,9 @@ export const useStore = create<State & Actions>()(
           return withGuests.result
             ? {
                 ...withGuests,
-                result: withConfirmedParticipants(withGuests.result, withGuests.confirmed ?? []),
+                result: withConfirmedParticipants(withGuests.result, withGuests.confirmed ?? [], {
+                  pruneMissing: withGuests.dbEstado !== "cerrado",
+                }),
               }
             : withGuests;
         });
