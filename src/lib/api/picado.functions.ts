@@ -345,7 +345,9 @@ export const adminRemoveSignup = async ({
     p_match_id: data.match_id,
     p_participant_id: data.player_id,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error([error.message, error.details, error.hint].filter(Boolean).join(" - "));
+  }
   if (result && typeof result === "object" && "ok" in result && !result.ok) {
     throw new Error(String(result.message || "No se pudo dar de baja"));
   }
