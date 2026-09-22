@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { setAdminActor } from "@/lib/admin-audit";
 import {
   matches as seedMatches,
   players as seedPlayers,
@@ -611,15 +612,19 @@ export const useStore = create<State & Actions>()(
         const access = ADMIN_ACCESS_CODES.find((entry) => pin.trim() === entry.pin);
         if (access) {
           set({ isAdmin: true, adminRole: access.role, adminSource: "pin", adminPlayerId: null });
+          setAdminActor({ playerId: null, source: "pin" });
           return true;
         }
         return false;
       },
       loginAdminByPlayer: (role, playerId) => {
         set({ isAdmin: true, adminRole: role, adminSource: "dni", adminPlayerId: playerId });
+        setAdminActor({ playerId, source: "dni" });
       },
-      logoutAdmin: () =>
-        set({ isAdmin: false, adminRole: null, adminSource: null, adminPlayerId: null }),
+      logoutAdmin: () => {
+        set({ isAdmin: false, adminRole: null, adminSource: null, adminPlayerId: null });
+        setAdminActor(null);
+      },
 
       addPlayer: async (
         name,
@@ -858,6 +863,14 @@ export const useStore = create<State & Actions>()(
         adminSource: state.adminSource,
         adminPlayerId: state.adminPlayerId,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.isAdmin) {
+          setAdminActor({
+            playerId: state.adminPlayerId ?? null,
+            source: state.adminSource ?? "unknown",
+          });
+        }
+      },
     },
   ),
 );

@@ -1,4 +1,5 @@
 import { supabase } from "../supabase";
+import { logAdminAction } from "../admin-audit";
 import type {
   MatchDetailData,
   PicadoMatch,
@@ -211,6 +212,15 @@ export const adminCreateMatch = async ({
     .single();
 
   if (error) throw new Error(error.message);
+  logAdminAction("match.create", match?.id ?? null, {
+    fecha: data.fecha,
+    hora: data.hora,
+    sede: data.sede,
+    formato: data.formato,
+    cupo_max: data.cupo_max,
+    estado: data.estado,
+    match_type: data.match_type,
+  });
   return match;
 };
 
@@ -240,6 +250,8 @@ export const adminUpdateMatch = async ({
     .single();
 
   if (error) throw new Error(error.message);
+  const { notas: _notas, ...loggablePatch } = data.patch;
+  logAdminAction("match.update", data.id, loggablePatch);
   return match;
 };
 
@@ -248,6 +260,7 @@ export const adminDeleteMatch = async ({ data }: { data: { id: string } }) => {
   const { error } = await supabase.from("picado_matches").delete().eq("id", data.id);
 
   if (error) throw new Error(error.message);
+  logAdminAction("match.delete", data.id);
   return { ok: true };
 };
 
@@ -332,6 +345,10 @@ export const adminAddSignup = async ({
     .single();
 
   if (error) throw new Error(error.message);
+  logAdminAction("signup.add", data.match_id, {
+    player_id: data.player_id,
+    estado: data.estado,
+  });
   return signup;
 };
 
@@ -351,6 +368,7 @@ export const adminRemoveSignup = async ({
   if (result && typeof result === "object" && "ok" in result && !result.ok) {
     throw new Error(String(result.message || "No se pudo dar de baja"));
   }
+  logAdminAction("signup.remove", data.match_id, { player_id: data.player_id });
   return result ?? { ok: true };
 };
 
@@ -408,6 +426,12 @@ export const adminCreatePlayer = async ({
   });
 
   if (error) throw new Error(error.message);
+  const { dni: _dni, ...loggable } = data;
+  logAdminAction(
+    "player.create",
+    (player as { id?: string } | null)?.id ?? null,
+    { ...loggable, dni_provided: !!data.dni },
+  );
   return player;
 };
 
@@ -442,6 +466,11 @@ export const adminUpdatePlayer = async ({
   });
 
   if (error) throw new Error(error.message);
+  const { dni: _dni, ...loggablePatch } = data.patch;
+  logAdminAction("player.update", data.id, {
+    ...loggablePatch,
+    dni_changed: data.patch.dni !== undefined,
+  });
   return player;
 };
 
@@ -452,6 +481,7 @@ export const adminDeletePlayer = async ({ data }: { data: { id: string } }) => {
   });
 
   if (error) throw new Error(error.message);
+  logAdminAction("player.delete", data.id);
   return player;
 };
 
@@ -567,6 +597,7 @@ export const saveScoringRules = async ({ data }: {
     p_rules: data.rules,
   });
   if (error) throw new Error(error.message);
+  logAdminAction("rules.save", data.slug, { rules: data.rules });
 };
 
 // ── Recurrencias: listado admin (incluye inactivas) ───────
@@ -598,7 +629,15 @@ export const saveRecurrence = async ({ data }: {
     p_activa: r.activa ?? true,
   });
   if (error) throw new Error(error.message);
-  return row as PicadoRecurrence;
+  const saved = row as PicadoRecurrence;
+  logAdminAction(r.id ? "recurrence.update" : "recurrence.create", saved?.id ?? null, {
+    dia_semana: r.dia_semana,
+    hora: r.hora,
+    sede: r.sede,
+    formato: r.formato,
+    activa: r.activa,
+  });
+  return saved;
 };
 
 // ── Admin Mutation: eliminar regla de recurrencia ─────────
@@ -607,13 +646,16 @@ export const deleteRecurrence = async ({ data }: { data: { id: string } }): Prom
     p_id: data.id,
   });
   if (error) throw new Error(error.message);
+  logAdminAction("recurrence.delete", data.id);
 };
 
 // ── Admin: materializar partidos de las recurrencias ahora ─
 export const materializeRecurrences = async (): Promise<number> => {
   const { data, error } = await supabase.rpc("picado_materialize_recurrences");
   if (error) throw new Error(error.message);
-  return (data as number) ?? 0;
+  const count = (data as number) ?? 0;
+  logAdminAction("recurrence.materialize", null, { creados: count });
+  return count;
 };
 
 // ── Fondo Común: movimientos del grupo (lectura pública) ──
@@ -651,7 +693,14 @@ export const saveFondoMovimiento = async ({ data }: {
     p_fecha: m.fecha,
   });
   if (error) throw new Error(error.message);
-  return row as FondoMovimiento;
+  const saved = row as FondoMovimiento;
+  logAdminAction(m.id ? "fondo.update" : "fondo.create", saved?.id ?? null, {
+    tipo: m.tipo,
+    concepto: m.concepto,
+    monto: m.monto,
+    fecha: m.fecha,
+  });
+  return saved;
 };
 
 // ── Admin Mutation: eliminar movimiento del fondo ─────────
@@ -660,4 +709,5 @@ export const deleteFondoMovimiento = async ({ data }: { data: { id: string } }):
     p_id: data.id,
   });
   if (error) throw new Error(error.message);
+  logAdminAction("fondo.delete", data.id);
 };
