@@ -87,12 +87,15 @@ function buildVotingSummary(match: StoredMatch | undefined, playerMap: Record<st
   const missingIds = participantIds.filter((id) => !voterIds.includes(id));
   const remainingVotes = Math.max(0, participantIds.length - voterIds.length);
 
+  const isDraw = result.scoreA === result.scoreB;
   const winnerTeamIds =
     result.scoreA > result.scoreB
       ? result.teamA
       : result.scoreB > result.scoreA
         ? result.teamB
         : [];
+  // En empate el MVP puede ser cualquier jugador oficial que participó.
+  const mvpEligibleIds = isDraw ? participantIds : winnerTeamIds;
   const goalScorerIds = participantIds.filter((id) => (result.stats?.[id]?.goals ?? 0) > 0);
 
   const nameFor = (id: string) => playerMap[id]?.nickname ?? playerMap[id]?.name ?? "Desconocido";
@@ -128,9 +131,10 @@ function buildVotingSummary(match: StoredMatch | undefined, playerMap: Record<st
     total: participantIds.length,
     missing: missingIds.map((id) => ({ id, name: nameFor(id) })),
     remainingVotes,
-    mvpRows: rowsFor("mvp_vote", winnerTeamIds),
+    mvpRows: rowsFor("mvp_vote", mvpEligibleIds),
     golRows: rowsFor("gol_vote", goalScorerIds),
     hasWinnerTeam: winnerTeamIds.length > 0,
+    isDraw,
   };
 }
 
@@ -1154,11 +1158,15 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                           <span className="text-[10px] uppercase font-bold tracking-wider text-gold">
                             MVP
                           </span>
-                          {!votingSummary.hasWinnerTeam && (
+                          {votingSummary.isDraw ? (
+                            <span className="text-[10px] text-muted-foreground">
+                              Empate · cualquier oficial
+                            </span>
+                          ) : !votingSummary.hasWinnerTeam ? (
                             <span className="text-[10px] text-muted-foreground">
                               Sin equipo ganador
                             </span>
-                          )}
+                          ) : null}
                         </div>
                         {votingSummary.mvpRows.length === 0 ? (
                           <p className="text-xs text-muted-foreground">
