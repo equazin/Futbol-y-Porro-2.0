@@ -645,7 +645,8 @@ function VoteForm({
 
   const mvpCandidates = participants.filter((s) => {
     if (!s.player_id || s.player_id === voterPlayerId) return false; // no self-vote / no invitados
-    return winnerTeamIds.includes(s.player_id); // only winners
+    if (isDraw) return true; // empate: cualquier jugador oficial que participó
+    return winnerTeamIds.includes(s.player_id); // con ganador: solo del equipo ganador
   });
 
   const golCandidates = participants.filter((s) => {
@@ -708,7 +709,9 @@ function VoteForm({
       {isDraw && (
         <div className="flex items-center gap-2 rounded-xl bg-secondary/60 border border-border/40 px-3 py-2 text-xs text-muted-foreground">
           <span>⚖️</span>
-          <span>El MVP se habilita cuando hay un equipo ganador cargado.</span>
+          <span>
+            Empate: el MVP puede ser <strong>cualquier jugador oficial</strong> que participó.
+          </span>
         </div>
       )}
 
@@ -719,9 +722,9 @@ function VoteForm({
             <span className="text-lg">👑</span>
             <h3 className="text-sm font-bold uppercase tracking-wider">MVP del Partido</h3>
           </div>
-          {!isDraw && (
-            <span className="text-[10px] uppercase text-gold font-bold">Solo equipo ganador</span>
-          )}
+          <span className="text-[10px] uppercase text-gold font-bold">
+            {isDraw ? "Cualquier jugador oficial" : "Solo equipo ganador"}
+          </span>
         </div>
         {mvpCandidates.length === 0 ? (
           <p className="text-xs text-muted-foreground px-1">
