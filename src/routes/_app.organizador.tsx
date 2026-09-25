@@ -325,6 +325,7 @@ function OrganizadorPanel() {
     balanceTeams,
     setStat,
     setMvp,
+    overrideVoteResults,
     closeMatch,
     finalizeMatch,
     reopenMatch,
@@ -1238,6 +1239,12 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
                         </div>
                       </div>
                     )}
+
+                    <ManualVoteOverride
+                      match={activeMatch}
+                      playerMap={playerMap}
+                      onSave={overrideVoteResults}
+                    />
                   </div>
                 )}
 
@@ -1960,6 +1967,113 @@ _¡Gracias a todos por venir! Nos vemos el próximo partido_ 🙌`;
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Override manual del MVP y Gol de la Fecha ────────────────
+function ManualVoteOverride({
+  match,
+  playerMap,
+  onSave,
+}: {
+  match: StoredMatch;
+  playerMap: Record<string, Player>;
+  onSave: (
+    matchId: string,
+    patch: { mvp?: string | null; gol?: string | null },
+  ) => Promise<void>;
+}) {
+  const currentMvp = match.result?.mvpResult ?? "";
+  const currentGol = match.result?.golResult ?? "";
+  const [mvp, setMvp] = useState<string>(currentMvp);
+  const [gol, setGol] = useState<string>(currentGol);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setMvp(match.result?.mvpResult ?? "");
+    setGol(match.result?.golResult ?? "");
+  }, [match.id, match.result?.mvpResult, match.result?.golResult]);
+
+  const options = useMemo(() => {
+    const ids = (match.confirmed ?? []).filter((id) => !id.startsWith("guest:"));
+    return ids
+      .map((id) => ({ id, label: playerMap[id]?.nickname ?? playerMap[id]?.name ?? id }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [match.confirmed, playerMap]);
+
+  const dirty = mvp !== currentMvp || gol !== currentGol;
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(match.id, {
+        mvp: mvp === "" ? null : mvp,
+        gol: gol === "" ? null : gol,
+      });
+      toast.success("MVP y Gol de la Fecha actualizados");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-gold/25 bg-gold/5 px-3 py-3 space-y-3">
+      <div>
+        <div className="text-[10px] uppercase font-bold tracking-wider text-gold">
+          Cargar a mano
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Si la votacion no llega a un ganador claro, forza el resultado desde aca.
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="text-xs space-y-1">
+          <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+            MVP
+          </span>
+          <select
+            value={mvp}
+            onChange={(e) => setMvp(e.target.value)}
+            className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-xs focus:outline-none focus:border-gold/50"
+          >
+            <option value="">— Sin asignar —</option>
+            {options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs space-y-1">
+          <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+            Gol de la Fecha
+          </span>
+          <select
+            value={gol}
+            onChange={(e) => setGol(e.target.value)}
+            className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-xs focus:outline-none focus:border-lime/50"
+          >
+            <option value="">— Sin asignar —</option>
+            {options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="flex justify-end">
+        <button
+          onClick={handleSave}
+          disabled={!dirty || saving}
+          className="inline-flex items-center gap-2 rounded-lg bg-gold/90 text-black px-3 py-1.5 text-[11px] font-bold uppercase hover:bg-gold transition disabled:opacity-40"
+        >
+          {saving ? "Guardando..." : "Guardar override"}
+        </button>
+      </div>
     </div>
   );
 }

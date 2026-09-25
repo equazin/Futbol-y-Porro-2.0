@@ -26,6 +26,7 @@ const ACCION_LABEL: Record<string, string> = {
   "fondo.create": "Alta movimiento fondo",
   "fondo.update": "Editar movimiento fondo",
   "fondo.delete": "Eliminar movimiento fondo",
+  "vote.override": "Cargar MVP/Gol manualmente",
 };
 
 function LogsPage() {

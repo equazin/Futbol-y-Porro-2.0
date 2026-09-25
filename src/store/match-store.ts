@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { setAdminActor } from "@/lib/admin-audit";
+import { setAdminActor, logAdminAction } from "@/lib/admin-audit";
 import {
   matches as seedMatches,
   players as seedPlayers,
@@ -110,6 +110,10 @@ type Actions = {
   setStat: (matchId: string, playerId: string, patch: Partial<PlayerStats>) => Promise<void>;
   setScore: (matchId: string, scoreA: number, scoreB: number) => Promise<void>;
   setMvp: (matchId: string, playerId: string | null) => Promise<void>;
+  overrideVoteResults: (
+    matchId: string,
+    patch: { mvp?: string | null; gol?: string | null },
+  ) => Promise<void>;
   closeMatch: (matchId: string) => Promise<void>;
   finalizeMatch: (matchId: string) => Promise<void>;
   reopenMatch: (matchId: string) => Promise<void>;
@@ -477,6 +481,48 @@ export const useStore = create<State & Actions>()(
               id: matchId,
               patch: { notas: JSON.stringify(updatedResult) },
             },
+          });
+        }
+      },
+
+      overrideVoteResults: async (matchId, patch) => {
+        let updatedResult: MatchResult | undefined;
+        set((s) => {
+          const matches = s.matches.map((m) => {
+            if (m.id !== matchId) return m;
+            const base = m.result ?? initialResult(m);
+            const nextMvp =
+              patch.mvp === undefined ? base.mvpResult : (patch.mvp ?? undefined);
+            const nextGol =
+              patch.gol === undefined ? base.golResult : (patch.gol ?? undefined);
+            const stats = { ...base.stats };
+            for (const id of Object.keys(stats)) {
+              stats[id] = {
+                ...stats[id],
+                mvp: id === nextMvp,
+                golVote: id === nextGol,
+              };
+            }
+            updatedResult = {
+              ...base,
+              stats,
+              mvpResult: nextMvp,
+              golResult: nextGol,
+            };
+            return { ...m, result: updatedResult };
+          });
+          return { matches };
+        });
+        if (updatedResult) {
+          await adminUpdateMatch({
+            data: {
+              id: matchId,
+              patch: { notas: JSON.stringify(updatedResult) },
+            },
+          });
+          logAdminAction("vote.override", matchId, {
+            mvp: updatedResult.mvpResult ?? null,
+            gol: updatedResult.golResult ?? null,
           });
         }
       },
